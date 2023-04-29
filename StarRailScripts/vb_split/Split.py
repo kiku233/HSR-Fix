@@ -237,7 +237,7 @@ def split_file(source_name, max_element_number=b"5"):
             if element_name_list[index] in [b"BLENDWEIGHTS", b"BLENDINDICES"]:
                 blend_vertex_data[i].append(vertex_data_list[i][index])
 
-            if element_name_list[index] in [b"TEXCOORD", b"TEXCOORD1"]:
+            if element_name_list[index] in [b"TEXCOORD", b"TEXCOORD1", b"COLOR"]:
                 texcoord_vertex_data[i].append(vertex_data_list[i][index])
 
     position_bytes = b""
@@ -269,15 +269,15 @@ def split_file(source_name, max_element_number=b"5"):
 
 if __name__ == "__main__":
     # set work dir.
-    work_dir = "D:/Desktop/NarakaLoader/NarakaTest/"
+    work_dir = "D:/softs/Star Rail/Game/SRTest"
     os.chdir(work_dir)
 
     # combine the output filename.
-    source_names = ["cloth"]
+    source_names = ["body"]
 
     for source_name in source_names:
         print("Processing " + source_name + ".vb")
-        split_file(source_name, max_element_number=b"5")
+        split_file(source_name, max_element_number=b"7")
 
     print("----------------------------------------------------------\r\nAll process done！")
 

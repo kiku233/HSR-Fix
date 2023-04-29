@@ -245,6 +245,10 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
                 if filename not in vb_filenames_rearrange:
                     vb_filenames_rearrange.append(filename)
 
+    logging.info("重新排序后的顺序:")
+    # TODO 这里重新排序后并不是正确的顺序，因为是由merge的location指定的
+    logging.info(vb_filenames_rearrange)
+
     for filename in vb_filenames_rearrange:
         # Get the vb file's slot number.
         vb_number = filename[filename.find("-vb"):filename.find("=")][1:].encode()
@@ -411,6 +415,9 @@ def output_vb_file(vb_file_info):
             output_file.write(b"\r\n")
 
     output_file.close()
+
+
+# TODO 这里我们要把所有的文件移动方法单独分割开来，比如移动图片文件，接收一个要移动的图片文件的属性列表，这样方便在不同的游戏之间切换
 
 
 def move_related_files(indices, move_dds=False, only_pst7=False, move_vscb=False, move_pscb=False):

@@ -19,6 +19,87 @@ import logging
 import time
 
 
+def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointlist_tech):
+    logging.info("执行函数：get_pointlit_and_trianglelist_indices_V2(HSR)")
+    logging.info("开始读取所有vb0文件的index列表：")
+    indices = sorted([re.findall('^\d+', x)[0] for x in glob.glob('*-vb0*txt')])
+    logging.info(indices)
+
+    pointlist_indices_dict = {}
+    trianglelist_indices_dict = {}
+    """
+    format:
+    {index:vertex count,index2,vertex count2,...}
+    """
+
+    # TODO 在之前的设计中，trianglelist_vertex_count只有一个，所以导致后面9094匹配不到
+    trianglelist_vertex_count = None
+
+    # 1.First, grab all vb0 file's indices.
+    for index in range(len(indices)):
+        vb0_filename = glob.glob(indices[index] + '-vb0*txt')[0]
+        logging.info("当前处理的vb0文件：" + vb0_filename)
+        topology, vertex_count = get_topology_vertexcount(vb0_filename)
+        logging.info("当前vb0文件的topology：" + str(topology))
+        logging.info("当前vb0文件的vertex_count：" + str(vertex_count))
+
+        if topology == b"pointlist":
+            # print("index: " + str(indices[index]) + " VertexCount = " + str(vertex_count))
+
+            # Filter, vb0 filename must have ROOT VS.
+            if use_pointlist_tech:
+                if root_vs in vb0_filename:
+                    pointlist_indices_dict[indices[index]] = vertex_count
+            else:
+                pointlist_indices_dict[indices[index]] = vertex_count
+
+        ib_filename = glob.glob(indices[index] + '-ib*txt')[0]
+        logging.info("当前处理的ib文件：" + ib_filename)
+
+        topology, vertex_count = get_topology_vertexcount(ib_filename)
+        logging.info("当前ib文件的topology： "+str(topology))
+        logging.info("当前ib文件的vertex_count： "+str(vertex_count))
+        logging.info(split_str)
+
+        if topology == b"trianglelist":
+            # Filter,ib filename must include input_ib_hash.
+            if input_ib_hash in ib_filename:
+                topology, vertex_count = get_topology_vertexcount(vb0_filename)
+                trianglelist_indices_dict[(indices[index])] = vertex_count
+                trianglelist_vertex_count = vertex_count
+
+
+
+    logging.info("Based on vertex count, remove the duplicated pointlist indices.")
+    logging.info("output pointlist and trianglelist before remove:")
+    logging.info(pointlist_indices_dict)
+    logging.info(trianglelist_indices_dict)
+
+    # TODO 这里强行设置为前一个pointlist技术里有的，来测试一下输出的结果
+    # logging.info(trianglelist_vertex_count)
+    # trianglelist_vertex_count = b"15185"
+
+    pointlist_indices = []
+    # TODO 注意，星穹铁道中相同的pointlist会出现两次，且数值完全一样
+
+    trianglelist_indices = []
+    for pointlist_index in pointlist_indices_dict:
+        if pointlist_indices_dict.get(pointlist_index) == trianglelist_vertex_count:
+            pointlist_indices.append(pointlist_index)
+
+    for trianglelist_index in trianglelist_indices_dict:
+        trianglelist_indices.append(trianglelist_index)
+
+    logging.info("indices全部处理完毕")
+    logging.info("----------------------------------------------------------")
+    logging.info("Pointlist vb indices: " + str(pointlist_indices))
+    logging.info("Trianglelist vb indices: " + str(trianglelist_indices))
+    logging.info("函数：get_pointlit_and_trianglelist_indices_v2执行完成")
+
+    return pointlist_indices, trianglelist_indices
+
+
+
 def get_pointlit_and_trianglelist_indices(input_ib_hash, root_vs, use_pointlist_tech):
     '''
     可以选择不使用pointlist_tech来导出武器、随人物衣服固定的物件等未装载到pointlist中的物件
@@ -161,7 +242,7 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name):
     output_bytes = b""
     output_bytes = output_bytes + (b"[Resource_POSITION]\r\ntype = Buffer\r\nstride = 40\r\nfilename = " + part_name.encode() + b"_POSITION.buf\r\n\r\n")
     output_bytes = output_bytes + (b"[Resource_BLEND]\r\ntype = Buffer\r\nstride = 32\r\nfilename = " + part_name.encode() + b"_BLEND.buf\r\n\r\n")
-    output_bytes = output_bytes + (b"[Resource_TEXCOORD]\r\ntype = Buffer\r\nstride = 8\r\nfilename = " + part_name.encode() + b"_TEXCOORD.buf\r\n\r\n")
+    output_bytes = output_bytes + (b"[Resource_TEXCOORD]\r\ntype = Buffer\r\nstride = 20\r\nfilename = " + part_name.encode() + b"_TEXCOORD.buf\r\n\r\n")
     output_bytes = output_bytes + (b"[Resource_IB_FILE]\r\ntype = Buffer\r\nformat = DXGI_FORMAT_R16_UINT\r\nfilename = " + part_name.encode() + b".ib\r\n\r\n")
     output_bytes = output_bytes + (b"[Resource_"+part_name.encode() + b"]\r\nfilename = "+ part_name.encode()+b".png\r\n\r\n")
 
@@ -557,7 +638,12 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
 
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
-    pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices(merge_info.draw_ib, merge_info.root_vs, use_pointlist_tech=merge_info.use_pointlist)
+    # TODO 这里获取的pointlist_indices和trianglelist_indices需要改变
+    #  在Naraka中，这里的trianglelist_indices应该只有一个，但是在HSR(Hongkai star rail)中有两个
+    #  所以这里需要接收多个，并且在循环中挨个处理。
+
+    # TODO 这里用v2版本做测试
+    pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2(merge_info.draw_ib, merge_info.root_vs, use_pointlist_tech=merge_info.use_pointlist)
 
     if use_pointlist_tech:
         if len(pointlist_indices) == 0:
@@ -600,17 +686,17 @@ if __name__ == "__main__":
     LoaderFolder = "D:/softs/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-04-29-110430"
+    FrameAnalyseFolder = "FrameAnalysis-2023-04-29-221425"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
-    # SRRootActionVS = "e8425f64cfb887cd"
-    # SRRootItemVS = "9684c4091fc9e35a"
+    # RootActionVS = "e8425f64cfb887cd"
+    # RootItemVS = "9684c4091fc9e35a"
 
     merge_info = MergeInfo()
-    merge_info.part_name = "cloth"
+    merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "97ad7623"
+    merge_info.draw_ib = "85ad43b3"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 
@@ -619,11 +705,20 @@ if __name__ == "__main__":
                                , b"COLOR",b"TEXCOORD",b"TEXCOORD1"
                                ,b"BLENDWEIGHTS", b"BLENDINDICES"]
 
-    info_location = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
-                     b"BLENDWEIGHTS": "vb3",
-                     b"BLENDINDICES": "vb2",
-                     b"TEXCOORD": "vb1"}
-    merge_info.info_location = info_location
+    # Remember this location must be manually write.
+    # 注意这里的顺序就是最终VB0文件中的顺序！
+    info_location_cloth = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
+                     b"COLOR": "vb1",b"TEXCOORD": "vb1",b"TEXCOORD1": "vb1",
+                     b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
+                    }
+
+    # TODO 设置一下武器的location信息
+    info_location_weapon = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
+                           b"COLOR": "vb1", b"TEXCOORD": "vb1", b"TEXCOORD1": "vb1",
+                           b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
+                           }
+
+    merge_info.info_location = info_location_cloth
 
     # work dir
     work_dir = LoaderFolder + FrameAnalyseFolder + "/"
