@@ -12,7 +12,6 @@ int main()
 
     // Get a handle to the primary token of the current process
     bResult = OpenProcessToken(GetCurrentProcess(), TOKEN_ALL_ACCESS, &hToken);
-    printf("OpenProcess: %d\n", GetLastError());
 
     if (!bResult)
     {
