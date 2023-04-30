@@ -410,8 +410,8 @@ def output_vb_file(vb_file_info):
             if vertex_data.element_name in header_info_has_element_list:
                 output_file.write(vertex_data.__str__())
 
-        logging.info("If it is the final line ,we don't append.")
         if index != len(vertex_data_chunk_list) - 1:
+            # logging.info("it is the final line ,we need to append a line break.")
             output_file.write(b"\r\n")
 
     output_file.close()
@@ -509,6 +509,29 @@ def get_topology_vertexcount(filename):
     return get_topology, get_vertex_count
 
 
+def get_first_index_in_ibfile(filename):
+    ib_file = open(filename, "rb")
+    ib_file_size = os.path.getsize(filename)
+    get_topology = None
+    get_first_index = None
+    count = 0
+    while ib_file.tell() <= ib_file_size:
+        line = ib_file.readline()
+        # Because topology only appear in the first 5 line,so if count > 5 ,we can stop looking for it.
+        count = count + 1
+        if count > 5:
+            break
+        if line.startswith(b"first index: "):
+            get_first_index = line[line.find(b"first index: ") + b"first index: ".__len__():line.find(b"\r\n")]
+
+    # Safely close the file.
+    ib_file.close()
+    logging.info("Get first index:" + str(get_topology))
+
+    return get_first_index
+
+
+
 def get_unique_ib_bytes_by_indices(indices):
     ib_filenames = []
     for index in range(len(indices)):
@@ -517,16 +540,33 @@ def get_unique_ib_bytes_by_indices(indices):
         ib_filenames.append(ib_filename)
 
     ib_file_bytes = []
+    ib_file_first_index_list = []
     for ib_filename in ib_filenames:
+        first_index = get_first_index_in_ibfile(ib_filename)
+
         with open(ib_filename, "rb") as ib_file:
             bytes = ib_file.read()
             if bytes not in ib_file_bytes:
                 ib_file_bytes.append(bytes)
 
-    return ib_file_bytes
+                # also need [first index] info to generate the .ini file.
+                if first_index not in ib_file_first_index_list:
+                    ib_file_first_index_list.append(first_index)
+
+    return ib_file_bytes, ib_file_first_index_list
 
 
 def get_header_info_by_elementnames(output_element_list,type):
+    # Before generate,we need to fix the semantic name equals TEXCOORD1 problem.
+    # Note this way is deprecated.
+    # new_output_element_list = []
+    # for element in output_element_list:
+    #     if element.semantic_name.startswith(b"TEXCOORD") and element.semantic_name != b"TEXCOORD":
+    #         new_output_element_list.append(b"TEXCOORD")
+    #     else:
+    #         new_output_element_list.append(element)
+    # output_element_list = new_output_element_list
+
     header_info = HeaderInfo()
     # 1.Generate element_list.
     element_list = []
@@ -579,12 +619,21 @@ def get_header_info_by_elementnames(output_element_list,type):
             element.semantic_index = b"0"
             element.format = b"R32G32_FLOAT"
             element.byte_width = 8
+
         elif element_name.endswith(b"TEXCOORD1"):
             element.semantic_index = b"1"
             element.format = b"R32G32_FLOAT"
             element.byte_width = 8
 
+        # elif element_name.startswith(b"TEXCOORD") and element_name != b"TEXCOORD":
+        #     # fix the semantic name equals TEXCOORD1 problem.
+        #     element.semantic_name = b"TEXCOORD"
+        #     element.semantic_index = b"1"
+        #     element.format = b"R32G32_FLOAT"
+        #     element.byte_width = 8
+
         element_list.append(element)
+
     # 2.Add aligned_byte_offset and element_number.
     new_element_list = []
     aligned_byte_offset = 0

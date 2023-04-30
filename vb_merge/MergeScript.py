@@ -32,8 +32,7 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
     {index:vertex count,index2,vertex count2,...}
     """
 
-    # TODO 在之前的设计中，trianglelist_vertex_count只有一个，所以导致后面9094匹配不到
-    trianglelist_vertex_count = None
+    trianglelist_vertex_count = b"0"
 
     # 1.First, grab all vb0 file's indices.
     for index in range(len(indices)):
@@ -66,7 +65,14 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
             if input_ib_hash in ib_filename:
                 topology, vertex_count = get_topology_vertexcount(vb0_filename)
                 trianglelist_indices_dict[(indices[index])] = vertex_count
-                trianglelist_vertex_count = vertex_count
+
+                """
+                在所有的游戏中，即使一个index buffer中出现了多个index的多个vertex count,
+                只有最大的那个vertex count是整个index buffer的
+                """
+                if int.from_bytes(vertex_count,"little") >= int.from_bytes(trianglelist_vertex_count,"little"):
+                    trianglelist_vertex_count = vertex_count
+                    logging.info(trianglelist_vertex_count)
 
 
 
@@ -76,11 +82,13 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
     logging.info(trianglelist_indices_dict)
 
     # TODO 这里强行设置为前一个pointlist技术里有的，来测试一下输出的结果
+    #  注意，这里trianglelist_vertex_count还是只有一个，且必须是所有draw中最大的哪一个
     # logging.info(trianglelist_vertex_count)
-    # trianglelist_vertex_count = b"15185"
+    # trianglelist_vertex_count = b"18389"
 
     pointlist_indices = []
     # TODO 注意，星穹铁道中相同的pointlist会出现两次，且数值完全一样
+
 
     trianglelist_indices = []
     for pointlist_index in pointlist_indices_dict:
@@ -224,6 +232,9 @@ def output_weapon_ini_file(pointlist_indices, input_ib_hash, part_name):
 
 
 def output_action_ini_file(pointlist_indices, input_ib_hash, part_name):
+    # don't care if pointlist_indices has many candidates,because we only use one of them
+    # because they are totally same,just show twice in pointlist files.
+
     logging.info(split_str)
     logging.info("Start to generate "+part_name+"'s ini config file.")
     filenames = sorted(glob.glob(pointlist_indices[0] + '-vb*txt'))
@@ -270,10 +281,8 @@ def output_trianglelist_ini_file(pointlist_indices, input_ib_hash, part_name):
     texcoord_vb = filenames[1]
     texcoord_vb = texcoord_vb[texcoord_vb.find("-vb1=") + 5:texcoord_vb.find("-vs=")]
 
-
     print("position_vb: " + position_vb)
     print("texcoord_vb: " + texcoord_vb)
-
 
     output_bytes = b""
     output_bytes = output_bytes + (b"[Resource_POSITION]\r\ntype = Buffer\r\nstride = 40\r\nfilename = " + part_name.encode() + b"_POSITION.buf\r\n\r\n")
@@ -301,20 +310,13 @@ def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info
     move_related_files(trianglelist_indices, move_dds=True, only_pst7=True)
     logging.info(split_str)
 
-    logging.info("Start to generate ini config file: ")
-    if merge_info.type == "weapon":
-        output_weapon_ini_file(pointlist_indices, merge_info.draw_ib, part_name)
-    else:
-        output_action_ini_file(pointlist_indices, merge_info.draw_ib, part_name)
-    logging.info(split_str)
-
     logging.info("Start to read info from pointlist vb files(Only from pointlist files).")
     logging.info("The elements need to read is: " + str(read_pointlist_element_list))
     pointlist_vertex_data_chunk_list = read_vertex_data_chunk_list_gracefully(pointlist_indices[0],
                                                                               merge_info)
-
     logging.info("Based on output_element_list，generate a final header_info.")
-    header_info = get_header_info_by_elementnames(read_pointlist_element_list,merge_info.type)
+
+    header_info = get_header_info_by_elementnames(read_pointlist_element_list, merge_info.type)
     # Set vertex count
     header_info.vertex_count = str(len(pointlist_vertex_data_chunk_list)).encode()
 
@@ -324,18 +326,25 @@ def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info
             index]
 
     logging.info("Solve TEXCOORD1 can't match the element's semantic name TEXCOORD problem.")
+
+    # Get element_aligned_byte_offsets to a new format.
+    # Before set the output header info ,we need to fix the semantic name equals TEXCOORD1 problem
+    # This will cause vb0 file can not import into blender.
     element_aligned_byte_offsets = {}
     new_element_list = []
     for element in header_info.elementlist:
         logging.info("-----------------")
         logging.info(element.semantic_name)
         logging.info(element.semantic_index)
-
         element_aligned_byte_offsets[element.semantic_name] = element.aligned_byte_offset
+
+        # Fix texcoord1 problem
+        if element.semantic_name.startswith(b"TEXCOORD") and element.semantic_index != b"0":
+            element.semantic_name = b"TEXCOORD"
         new_element_list.append(element)
     header_info.elementlist = new_element_list
 
-    logging.info("Revise aligned byte offset")
+    logging.info("Change aligned byte offset in vertex data")
     new_final_vertex_data_chunk_list = []
     for vertex_data_chunk in final_vertex_data_chunk_list:
         new_vertex_data_chunk = []
@@ -349,22 +358,35 @@ def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info
     output_vb_fileinfo.header_info = header_info
     output_vb_fileinfo.vertex_data_chunk_list = final_vertex_data_chunk_list
 
-    ib_file_bytes = get_unique_ib_bytes_by_indices(trianglelist_indices)
+    ib_file_bytes, ib_file_first_index_list = get_unique_ib_bytes_by_indices(trianglelist_indices)
+    # logging.info("How many ib_file_bytes we finally have?")
+    # logging.info(ib_file_bytes.__len__())
+
 
     logging.info("Output to file.")
     for index in range(len(ib_file_bytes)):
+        output_partname = part_name + str(index)
+
         ib_file_byte = ib_file_bytes[index]
-        output_vbname = "output/" + merge_info.draw_ib + "-" + part_name + "-vb0.txt"
-        output_ibname = "output/" + merge_info.draw_ib + "-" + part_name + "-ib.txt"
+        output_vbname = "output/" + merge_info.draw_ib + "-" + output_partname + "-vb0.txt"
+        output_ibname = "output/" + merge_info.draw_ib + "-" + output_partname + "-ib.txt"
         output_vb_fileinfo.output_filename = output_vbname
 
-        logging.info("Write to ib file.")
+        logging.info("Output Step 1: Write to ib file.")
         output_ibfile = open(output_ibname, "wb+")
         output_ibfile.write(ib_file_byte)
         output_ibfile.close()
 
-        logging.info("Write to vb file.")
+        logging.info("Output Step 2: Write to vb file.")
         output_vb_file(output_vb_fileinfo)
+
+        logging.info("Output Step 3: Generate ini config file: ")
+        if merge_info.type == "weapon":
+            output_weapon_ini_file(pointlist_indices, merge_info.draw_ib, output_partname)
+        else:
+            # TODO remember to use ib_file_first_index_list
+            output_action_ini_file(pointlist_indices, merge_info.draw_ib, output_partname)
+        logging.info(split_str)
 
 
 def merge_pointlist_files(pointlist_indices, trianglelist_indices, part_name):
@@ -638,11 +660,7 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
 
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
-    # TODO 这里获取的pointlist_indices和trianglelist_indices需要改变
-    #  在Naraka中，这里的trianglelist_indices应该只有一个，但是在HSR(Hongkai star rail)中有两个
-    #  所以这里需要接收多个，并且在循环中挨个处理。
 
-    # TODO 这里用v2版本做测试
     pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2(merge_info.draw_ib, merge_info.root_vs, use_pointlist_tech=merge_info.use_pointlist)
 
     if use_pointlist_tech:
@@ -686,7 +704,7 @@ if __name__ == "__main__":
     LoaderFolder = "D:/softs/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-04-29-221425"
+    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-130853"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
     # RootActionVS = "e8425f64cfb887cd"
@@ -696,7 +714,7 @@ if __name__ == "__main__":
     merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "85ad43b3"
+    merge_info.draw_ib = "97ad7623"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 
@@ -731,7 +749,7 @@ if __name__ == "__main__":
     # set the output log file.
     logging.basicConfig(filename=work_dir + "output/" + str(time.strftime('%Y-%m-%d_%H_%M_%S_')) + str(time.time_ns()) + '.log', level=logging.DEBUG)
 
-    logging.info("NarakaMergeScript Current Version V2.1")
+    logging.info("HSR MergeScript Current Version V2.1")
     logging.info("Switch to work dir: " + work_dir)
     logging.info(split_str)
 
