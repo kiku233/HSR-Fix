@@ -70,26 +70,28 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
                 在所有的游戏中，即使一个index buffer中出现了多个index的多个vertex count,
                 只有最大的那个vertex count是整个index buffer的
                 """
-                if int.from_bytes(vertex_count,"little") >= int.from_bytes(trianglelist_vertex_count,"little"):
+                vertex_count_int = int.from_bytes(vertex_count, "big")
+                trianglelist_vertex_count_int = int.from_bytes(trianglelist_vertex_count, "big")
+
+                logging.info("vertex_count_int:")
+                logging.info(vertex_count_int)
+                logging.info("trianglelist_vertex_count_int:")
+                logging.info(trianglelist_vertex_count_int)
+
+                if  vertex_count_int >= trianglelist_vertex_count_int:
                     trianglelist_vertex_count = vertex_count
                     logging.info(trianglelist_vertex_count)
-
-
 
     logging.info("Based on vertex count, remove the duplicated pointlist indices.")
     logging.info("output pointlist and trianglelist before remove:")
     logging.info(pointlist_indices_dict)
     logging.info(trianglelist_indices_dict)
 
-    # TODO 这里强行设置为前一个pointlist技术里有的，来测试一下输出的结果
-    #  注意，这里trianglelist_vertex_count还是只有一个，且必须是所有draw中最大的哪一个
-    # logging.info(trianglelist_vertex_count)
-    # trianglelist_vertex_count = b"18389"
+    # 输出一下vertex_count，看看是否正常
+    logging.info(trianglelist_vertex_count)
 
+    # 注意，星穹铁道中相同的pointlist会出现两次，且数值完全一样
     pointlist_indices = []
-    # TODO 注意，星穹铁道中相同的pointlist会出现两次，且数值完全一样
-
-
     trianglelist_indices = []
     for pointlist_index in pointlist_indices_dict:
         if pointlist_indices_dict.get(pointlist_index) == trianglelist_vertex_count:
@@ -704,10 +706,10 @@ if __name__ == "__main__":
     output_folder_name = "output"
 
     # Here is your Loader location.
-    LoaderFolder = "D:/softs/Star Rail/Game/"
+    LoaderFolder = "C:/Program Files/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-130853"
+    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-201159"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
     # RootActionVS = "e8425f64cfb887cd"
@@ -717,7 +719,7 @@ if __name__ == "__main__":
     merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "97ad7623"
+    merge_info.draw_ib = "44885792"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 
