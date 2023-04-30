@@ -269,11 +269,11 @@ def split_file(source_name, max_element_number=b"5"):
 
 if __name__ == "__main__":
     # set work dir.
-    work_dir = "D:/softs/Star Rail/Game/SRTest"
+    work_dir = "C:/Program Files/Star Rail/Game/HSRTest"
     os.chdir(work_dir)
 
     # combine the output filename.
-    source_names = ["body"]
+    source_names = ["body0"]
 
     for source_name in source_names:
         print("Processing " + source_name + ".vb")

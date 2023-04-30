@@ -683,22 +683,20 @@ def start_merge_files(merge_info= MergeInfo()):
 
 if __name__ == "__main__":
     """
-    Version V2.1 features:
-    Extract to Blender:
-    - Can extract some of the weapon item which use ROOT_VS 9684c4091fc9e35a.
-    - Can extract some of the decorations item which use ROOT_VS 9684c4091fc9e35a.
-    - Can extract body and some of the cloth item which use ROOT_VS e8425f64cfb887cd.
-    - Can extract any item from trianglelist topology vb files but without BLEND info.
+    How to use these scripts:
+    (1) Before start,you need to set a variable called LoaderFolder which is your d3d11.dll located.
+    (2) First,you need to Press F8 to dump a FrameAnalysisFolder,and copy the folder path,
+    paste it to variable:FrameAnalyseFolder.
+    (3) Then you need to open hunting in game,switch between index buffer,select the index buffer you want to 
+    import into blender,and then copy and paste it to variable:merge_info.draw_ib
+    (4) Finally you could run this script to generate the merged vb0 files,and use them to import into blender.
     
-    Import back to game:
-    - Can split every types above of vb files but need some ajustment.
+    These scripts is designed for mod developer,so you may need to take time to read it and learn how to use it.
+    Please notice the log file generated,it's very useful to debug when program fail with unknwon error.
     
     Todo list:
     # TODO solve the vertex limit problem,
     #  because we can't correctly replace a object which vertex number is more than original object.
-    # TODO add use specific index to read pointlist info.
-    # TODO 学习blender shading教程，在blender中正确的渲染出人物。
-    # TODO 目前仍无法导出挂饰和固定的衣物部件
     """
 
     GameName = "Honkai: Star Rail"
@@ -709,7 +707,7 @@ if __name__ == "__main__":
     LoaderFolder = "C:/Program Files/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-201159"
+    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-212543"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
     # RootActionVS = "e8425f64cfb887cd"
@@ -719,7 +717,7 @@ if __name__ == "__main__":
     merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "44885792"
+    merge_info.draw_ib = "351d8570"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 
@@ -729,17 +727,17 @@ if __name__ == "__main__":
                                ,b"BLENDWEIGHTS", b"BLENDINDICES"]
 
     # Remember this location must be manually write.
-    # 注意这里的顺序就是最终VB0文件中的顺序！
+    # control their order to control the final vb0 file's vertex-data part element order.
     info_location_cloth = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
                      b"COLOR": "vb1",b"TEXCOORD": "vb1",b"TEXCOORD1": "vb1",
                      b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
                     }
 
-    # TODO 设置一下武器的location信息
-    info_location_weapon = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
-                           b"COLOR": "vb1", b"TEXCOORD": "vb1", b"TEXCOORD1": "vb1",
-                           b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
-                           }
+    # info location for weapon
+    # info_location_weapon = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
+    #                        b"COLOR": "vb1", b"TEXCOORD": "vb1", b"TEXCOORD1": "vb1",
+    #                        b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
+    #                        }
 
     merge_info.info_location = info_location_cloth
 
