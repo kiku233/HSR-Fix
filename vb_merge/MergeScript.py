@@ -231,7 +231,7 @@ def output_weapon_ini_file(pointlist_indices, input_ib_hash, part_name):
     logging.info("Generate "+part_name+"'s ini config file completed.")
 
 
-def output_action_ini_file(pointlist_indices, input_ib_hash, part_name):
+def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_first_index):
     # don't care if pointlist_indices has many candidates,because we only use one of them
     # because they are totally same,just show twice in pointlist files.
 
@@ -241,6 +241,8 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name):
     position_vb = filenames[0]
     position_vb = position_vb[position_vb.find("-vb0=") + 5:position_vb.find("-vs=")]
     logging.info("position_vb: " + str(position_vb))
+
+    # In HSR we cannot find the correct texcoord hash,so we use it in index buffer hash.
 
     texcoord_vb = filenames[1]
     texcoord_vb = texcoord_vb[texcoord_vb.find("-vb1=") + 5:texcoord_vb.find("-vs=")]
@@ -257,11 +259,12 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name):
     output_bytes = output_bytes + (b"[Resource_IB_FILE]\r\ntype = Buffer\r\nformat = DXGI_FORMAT_R16_UINT\r\nfilename = " + part_name.encode() + b".ib\r\n\r\n")
     output_bytes = output_bytes + (b"[Resource_"+part_name.encode() + b"]\r\nfilename = "+ part_name.encode()+b".png\r\n\r\n")
 
-    output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nhandling = skip\r\nib = Resource_IB_FILE\r\n;ps-t7 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
-    output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\n\r\n")
-    output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\n\r\n")
+    output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nmatch_first_index = "+ match_first_index +b"\r\nhandling = skip\r\nib = Resource_IB_FILE\r\nvb1 = Resource_TEXCOORD\r\n;ps-t0 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
+    # In HSR,we need a vb3 to fix the outline problem.
+    output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\nvb3 = Resource_POSITION\r\n\r\n")
+    # output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\n\r\n")
     output_bytes = output_bytes + (b"[TextureOverride_BLEND]\r\nhash = "+blend_vb.encode()+b"\r\nvb2 = Resource_BLEND\r\n\r\n")
-    output_bytes = output_bytes + (b";[TextureOverride_VB_SKIP_1]\r\n;hash = \r\n;handling = skip\r\n\r\n")
+    output_bytes = output_bytes + (b";[TextureOverride_VB_SKIP_Other_1]\r\n;hash = \r\n;handling = skip\r\n\r\n")
 
     logging.info(part_name + "  generated file content is: ")
     logging.info(str(output_bytes))
@@ -385,7 +388,7 @@ def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info
             output_weapon_ini_file(pointlist_indices, merge_info.draw_ib, output_partname)
         else:
             # TODO remember to use ib_file_first_index_list
-            output_action_ini_file(pointlist_indices, merge_info.draw_ib, output_partname)
+            output_action_ini_file(pointlist_indices, merge_info.draw_ib, output_partname, ib_file_first_index_list[index])
         logging.info(split_str)
 
 
