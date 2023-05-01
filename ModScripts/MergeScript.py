@@ -17,7 +17,7 @@ import time
 from NarakaMergeUtil import *
 import logging
 import time
-
+import configparser
 
 def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointlist_tech):
     logging.info("执行函数：get_pointlit_and_trianglelist_indices_V2(HSR)")
@@ -717,27 +717,24 @@ if __name__ == "__main__":
     #  (2) Split the output ib and vb file seperatelly,and write draw number in config
     #  (2) Generate a final .ini file used to load back to game.
 
-    GameName = "Honkai: Star Rail"
+    config = configparser.ConfigParser()
+    config.read('preset.ini')
     split_str = "----------------------------------------------------------------------------------------------"
-    output_folder_name = "output"
 
-    # Here is your Loader location.
-    LoaderFolder = "C:/Program Files/Star Rail/Game/"
+    # General Info
+    GameName = config["General"]["GameName"]
+    output_folder_name = config["General"]["OutputFolderName"]
+    LoaderFolder = config["General"]["LoaderFolder"]
+    FrameAnalyseFolder = config["General"]["FrameAnalyseFolder"]
 
-    # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-05-01-112803"
-
-    # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
-    # RootActionVS = "e8425f64cfb887cd"
-    # RootItemVS = "9684c4091fc9e35a"
-
+    # Merge Info
     merge_info = MergeInfo()
-    merge_info.part_name = "body"
-    merge_info.type = "cloth"
-    merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "daafea36"
-    merge_info.use_pointlist = True
-    merge_info.only_pointlist = True
+    merge_info.part_name = config["Merge"]["part_name"]
+    merge_info.type = config["Merge"]["type"]
+    merge_info.root_vs = config["Merge"]["root_vs"]
+    merge_info.draw_ib = config["Merge"]["draw_ib"]
+    merge_info.use_pointlist = config["Merge"]["use_pointlist"]
+    merge_info.only_pointlist = config["Merge"]["only_pointlist"]
 
     # TODO 输入时指定ELEMENT元素的各种属性，包括输出的长度
     merge_info.element_list = [b"POSITION", b"NORMAL", b"TANGENT"
