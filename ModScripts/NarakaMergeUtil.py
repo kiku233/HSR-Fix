@@ -18,6 +18,7 @@ import glob
 import os
 import shutil
 import logging
+import configparser
 
 
 class MergeInfo:
@@ -116,8 +117,8 @@ class VbFileInfo:
 
 
 def get_header_info(vb_file_name, max_element_number):
-
-    vb_file = open(vb_file_name, 'rb')
+    WorkFolder = get_work_folder()
+    vb_file = open(WorkFolder + vb_file_name, 'rb')
 
     header_info = HeaderInfo()
 
@@ -204,6 +205,14 @@ def get_header_info(vb_file_name, max_element_number):
     vb_file.close()
     return header_info
 
+def get_work_folder():
+    preset_config = configparser.ConfigParser()
+    preset_config.read('configs/preset.ini')
+    LoaderFolder = preset_config["General"]["LoaderFolder"]
+    FrameAnalyseFolder = preset_config["General"]["FrameAnalyseFolder"]
+    WorkFolder = LoaderFolder + FrameAnalyseFolder + "/"
+    return WorkFolder
+
 
 def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), only_vb1=False, sanity_check=False):
     """
@@ -213,18 +222,24 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
     :param sanity_check: weather check the first line to remove duplicated content.
     :return:
     """
+    WorkFolder = get_work_folder()
+
+
     # Get vb filenames by the file_index.
     if only_vb1:
-        vb_filenames = sorted(glob.glob(file_index + '-vb1*txt'))
+        vb_filenames = sorted(get_filter_filenames(WorkFolder, file_index+ "-vb1", ".txt"))
     else:
-        vb_filenames = sorted(glob.glob(file_index + '-vb*txt'))
+        vb_filenames = sorted(get_filter_filenames(WorkFolder, file_index + "-vb", ".txt"))
+
 
     print("开始读取vertex-data部分：")
     print("file_index: " + str(file_index))
     print("vb_filenames: " + str(vb_filenames))
 
     header_info = get_header_info(vb_filenames[0], b"9")
+
     vertex_count = header_info.vertex_count
+    print(vertex_count)
 
     vertex_data_chunk_list = [[] for i in range(int(str(vertex_count.decode())))]
 
@@ -244,6 +259,7 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
             if vb in filename:
                 if filename not in vb_filenames_rearrange:
                     vb_filenames_rearrange.append(filename)
+    print(vb_filenames_rearrange)
 
     logging.info("重新排序后的顺序:")
     # TODO 这里重新排序后并不是正确的顺序，因为是由merge的location指定的
@@ -253,7 +269,7 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
         # Get the vb file's slot number.
         vb_number = filename[filename.find("-vb"):filename.find("=")][1:].encode()
         # Open the vb file.
-        vb_file = open(filename, 'rb')
+        vb_file = open(WorkFolder + filename, 'rb')
         # For temporarily record the last line.
         line_before_tmp = b"\r\n"
 
@@ -420,7 +436,8 @@ def output_vb_file(vb_file_info):
 # TODO 这里我们要把所有的文件移动方法单独分割开来，比如移动图片文件，接收一个要移动的图片文件的属性列表，这样方便在不同的游戏之间切换
 
 
-def move_related_files(indices, move_dds=False, only_pst7=False, move_vscb=False, move_pscb=False):
+def move_related_files(indices, output_folder, move_dds=False, only_pst7=False, move_vscb=False, move_pscb=False):
+
     """
     :param indices:  the file indix you want to move
     :param move_dds: weather move dds file.
@@ -429,9 +446,6 @@ def move_related_files(indices, move_dds=False, only_pst7=False, move_vscb=False
     :param move_pscb:
     :return:
     """
-    # Create output folder in case it doesn't exist.
-    if not os.path.exists('output'):
-        os.mkdir('output')
 
     # TODO here we change ps-t7 to ps-t0
     if move_dds:
@@ -439,42 +453,50 @@ def move_related_files(indices, move_dds=False, only_pst7=False, move_vscb=False
         logging.info("Start to move .dds files.")
         # Start to move .dds files.
         if only_pst7:
-            filenames = glob.glob('*ps-t0*.dds')
+            filenames = get_filter_filenames(get_work_folder(),"ps-t0",".dds")
         else:
-            filenames = glob.glob('*.dds')
+            filenames = get_filter_filenames(get_work_folder(),".dds",".dds")
+
+        print(filenames)
 
         for filename in filenames:
-            if os.path.exists(filename):
+            if os.path.exists(get_work_folder()+ filename):
                 for index in indices:
                     if filename.__contains__(index):
                         logging.info("Moving ： " + filename + " ....")
-                        shutil.copy2(filename, 'output/' + filename)
+
+                        shutil.copy2(get_work_folder()+ filename, output_folder + filename)
 
     if move_vscb:
         logging.info("----------------------------------------------------------------")
         logging.info("Start to move VS-CB files.")
         # Start to move VS-CB files.
         filenames = glob.glob('*vs-cb*')
+        filenames = get_filter_filenames(get_work_folder(), "vs-cb", "")
+
         for filename in filenames:
             if os.path.exists(filename):
                 # Must have the vb index you sepcified.
                 for index in indices:
                     if filename.__contains__(index):
                         logging.info("Moving ： " + filename + " ....")
-                        shutil.copy2(filename, 'output/' + filename)
+                        shutil.copy2(get_work_folder()+filename, output_folder + filename)
 
     if move_pscb:
         logging.info("----------------------------------------------------------------")
         logging.info("Start to move PS-CB files.")
         # Start to move PS-CB files.
         filenames = glob.glob('*ps-cb*')
+        filenames = get_filter_filenames(get_work_folder(), "ps-cb", "")
+
         for filename in filenames:
             if os.path.exists(filename):
                 # Must have the vb index you sepcified.
                 for index in indices:
                     if filename.__contains__(index):
                         logging.info("Moving ： " + filename + " ....")
-                        shutil.copy2(filename, 'output/' + filename)
+
+                        shutil.copy2(get_work_folder()+filename, output_folder + filename)
 
 
 def get_topology_vertexcount(filename):
@@ -510,8 +532,8 @@ def get_topology_vertexcount(filename):
 
 
 def get_first_index_in_ibfile(filename):
-    ib_file = open(filename, "rb")
-    ib_file_size = os.path.getsize(filename)
+    ib_file = open(get_work_folder()+ filename, "rb")
+    ib_file_size = os.path.getsize(get_work_folder()+filename)
     get_topology = None
     get_first_index = None
     count = 0
@@ -531,12 +553,13 @@ def get_first_index_in_ibfile(filename):
     return get_first_index
 
 
-
 def get_unique_ib_bytes_by_indices(indices):
+
+
     ib_filenames = []
     for index in range(len(indices)):
         indexnumber = indices[index]
-        ib_filename = sorted(glob.glob(str(indexnumber) + '-ib*txt'))[0]
+        ib_filename = sorted(get_filter_filenames(get_work_folder(),str(indexnumber) + "-ib",".txt"))[0]
         ib_filenames.append(ib_filename)
 
     ib_file_bytes = []
@@ -544,7 +567,7 @@ def get_unique_ib_bytes_by_indices(indices):
     for ib_filename in ib_filenames:
         first_index = get_first_index_in_ibfile(ib_filename)
 
-        with open(ib_filename, "rb") as ib_file:
+        with open(get_work_folder()+ ib_filename, "rb") as ib_file:
             bytes = ib_file.read()
             if bytes not in ib_file_bytes:
                 ib_file_bytes.append(bytes)
@@ -556,85 +579,34 @@ def get_unique_ib_bytes_by_indices(indices):
     return ib_file_bytes, ib_file_first_index_list
 
 
-def get_header_info_by_elementnames(output_element_list,type):
-    # Before generate,we need to fix the semantic name equals TEXCOORD1 problem.
-    # Note this way is deprecated.
-    # new_output_element_list = []
-    # for element in output_element_list:
-    #     if element.semantic_name.startswith(b"TEXCOORD") and element.semantic_name != b"TEXCOORD":
-    #         new_output_element_list.append(b"TEXCOORD")
-    #     else:
-    #         new_output_element_list.append(element)
-    # output_element_list = new_output_element_list
+def get_header_info_by_elementnames(output_element_list, type):
+    vertex_config = configparser.ConfigParser()
+
+    if type == "weapon":
+        vertex_config.read("configs/vertex_attr_weapon.ini")
+    else:
+        vertex_config.read("configs/vertex_attr_body.ini")
+
 
     header_info = HeaderInfo()
     # 1.Generate element_list.
     element_list = []
     for element_name in output_element_list:
         element = Element()
-
         element.semantic_name = element_name
-        element.input_slot = b"0"
-        element.input_slot_class = b"per-vertex"
-        element.instance_data_step_rate = b"0"
 
-        if element_name.endswith(b"POSITION"):
-            element.semantic_index = b"0"
-            element.format = b"R32G32B32_FLOAT"
-            element.byte_width = 12
-        elif element_name.endswith(b"NORMAL"):
-            element.semantic_index = b"0"
-            element.format = b"R32G32B32_FLOAT"
-            element.byte_width = 12
-        elif element_name.endswith(b"TANGENT"):
-            element.semantic_index = b"0"
-            element.format = b"R32G32B32A32_FLOAT"
-            element.byte_width = 16
-        elif element_name.endswith(b"BLENDWEIGHTS"):
-            if type == "weapon":
-                element.semantic_index = b"0"
-                element.format = b"R8G8B8A8_UNORM"
-                element.byte_width = 32
-            else:
-                element.semantic_index = b"0"
-                element.format = b"R32G32B32A32_FLOAT"
-                element.byte_width = 16
+        print(vertex_config)
+        element.input_slot = vertex_config[element_name.decode()]["input_slot"].encode()
+        element.input_slot_class = vertex_config[element_name.decode()]["input_slot_class"].encode()
+        element.instance_data_step_rate = vertex_config[element_name.decode()]["instance_data_step_rate"].encode()
 
-        # TODO 这里改为输入时提供一个表格来进行
-        #  16为正常模型，4为武器项
-        elif element_name.endswith(b"BLENDINDICES"):
-            if type == "weapon":
-                element.semantic_index = b"0"
-                element.format = b"R32_UINT"
-                element.byte_width = 4
-            else:
-                element.semantic_index = b"0"
-                element.format = b"R32G32B32A32_SINT"
-                element.byte_width = 16
-        elif element_name.endswith(b"COLOR"):
-            element.semantic_index = b"0"
-            element.format = b"R8G8B8A8_UNORM"
-            element.byte_width = 4
-        elif element_name.endswith(b"TEXCOORD"):
-            element.semantic_index = b"0"
-            element.format = b"R32G32_FLOAT"
-            element.byte_width = 8
-
-        elif element_name.endswith(b"TEXCOORD1"):
-            element.semantic_index = b"1"
-            element.format = b"R32G32_FLOAT"
-            element.byte_width = 8
-
-        # elif element_name.startswith(b"TEXCOORD") and element_name != b"TEXCOORD":
-        #     # fix the semantic name equals TEXCOORD1 problem.
-        #     element.semantic_name = b"TEXCOORD"
-        #     element.semantic_index = b"1"
-        #     element.format = b"R32G32_FLOAT"
-        #     element.byte_width = 8
+        element.semantic_index = vertex_config[element_name.decode()]["semantic_index"].encode()
+        element.format = vertex_config[element_name.decode()]["format"].encode()
+        element.byte_width = vertex_config[element_name.decode()].getint("byte_width")
 
         element_list.append(element)
 
-    # 2.Add aligned_byte_offset and element_number.
+    # 2.Calculate aligned_byte_offset and element_number.
     new_element_list = []
     aligned_byte_offset = 0
     for index in range(len(element_list)):
@@ -651,3 +623,23 @@ def get_header_info_by_elementnames(output_element_list,type):
     header_info.elementlist = new_element_list
 
     return header_info
+
+
+def get_filter_vb_indices(target_folder, vb_number ):
+    dump_files = os.listdir(target_folder)
+
+    indices = []
+    for filename in dump_files:
+        if vb_number in filename and filename.endswith(".txt"):
+            index = filename.split(vb_number)[0]
+            indices.append(index)
+    return indices
+
+
+def get_filter_filenames(target_folder,key, endstr):
+    dump_files = os.listdir(target_folder)
+    filenames = []
+    for filename in dump_files:
+        if key in filename and filename.endswith(endstr):
+            filenames.append(filename)
+    return filenames

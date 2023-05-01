@@ -19,11 +19,17 @@ import logging
 import time
 import configparser
 
-def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointlist_tech):
+
+
+def get_pointlit_and_trianglelist_indices_V2():
+    draw_ib = preset_config["Merge"]["draw_ib"]
+    root_vs = preset_config["Merge"]["root_vs"]
+    use_pointlist = preset_config["Merge"]["use_pointlist"]
+
     logging.info("执行函数：get_pointlit_and_trianglelist_indices_V2(HSR)")
     logging.info("开始读取所有vb0文件的index列表：")
-    indices = sorted([re.findall('^\d+', x)[0] for x in glob.glob('*-vb0*txt')])
-    logging.info(indices)
+
+    indices = get_filter_vb_indices(WorkFolder,"-vb0")
 
     pointlist_indices_dict = {}
     trianglelist_indices_dict = {}
@@ -36,9 +42,11 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
 
     # 1.First, grab all vb0 file's indices.
     for index in range(len(indices)):
-        vb0_filename = glob.glob(indices[index] + '-vb0*txt')[0]
+
+        vb0_filename = get_filter_filenames(WorkFolder,indices[index] + "-vb0",".txt")[0]
+
         logging.info("当前处理的vb0文件：" + vb0_filename)
-        topology, vertex_count = get_topology_vertexcount(vb0_filename)
+        topology, vertex_count = get_topology_vertexcount(WorkFolder + vb0_filename)
         logging.info("当前vb0文件的topology：" + str(topology))
         logging.info("当前vb0文件的vertex_count：" + str(vertex_count))
 
@@ -46,24 +54,24 @@ def get_pointlit_and_trianglelist_indices_V2(input_ib_hash, root_vs, use_pointli
             # print("index: " + str(indices[index]) + " VertexCount = " + str(vertex_count))
 
             # Filter, vb0 filename must have ROOT VS.
-            if use_pointlist_tech:
+            if use_pointlist:
                 if root_vs in vb0_filename:
                     pointlist_indices_dict[indices[index]] = vertex_count
             else:
                 pointlist_indices_dict[indices[index]] = vertex_count
 
-        ib_filename = glob.glob(indices[index] + '-ib*txt')[0]
+        ib_filename = get_filter_filenames(WorkFolder,indices[index] + "-ib", ".txt")[0]
         logging.info("当前处理的ib文件：" + ib_filename)
 
-        topology, vertex_count = get_topology_vertexcount(ib_filename)
+        topology, vertex_count = get_topology_vertexcount(WorkFolder + ib_filename)
         logging.info("当前ib文件的topology： "+str(topology))
         logging.info("当前ib文件的vertex_count： "+str(vertex_count))
         logging.info(split_str)
 
         if topology == b"trianglelist":
             # Filter,ib filename must include input_ib_hash.
-            if input_ib_hash in ib_filename:
-                topology, vertex_count = get_topology_vertexcount(vb0_filename)
+            if draw_ib in ib_filename:
+                topology, vertex_count = get_topology_vertexcount(WorkFolder + vb0_filename)
                 trianglelist_indices_dict[(indices[index])] = vertex_count
 
                 """
@@ -239,7 +247,8 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_fi
 
     logging.info(split_str)
     logging.info("Start to generate "+part_name+"'s ini config file.")
-    filenames = sorted(glob.glob(pointlist_indices[0] + '-vb*txt'))
+
+    filenames = sorted(get_filter_filenames(WorkFolder,pointlist_indices[0] + "-vb",".txt"))
     position_vb = filenames[0]
     position_vb = position_vb[position_vb.find("-vb0=") + 5:position_vb.find("-vs=")]
     logging.info("position_vb: " + str(position_vb))
@@ -283,7 +292,7 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_fi
     logging.info(part_name + "  generated file content is: ")
     logging.info(str(output_bytes))
 
-    output_file = open("output/"+part_name+".ini", "wb+")
+    output_file = open(preset_config["General"]["OutputFolder"] + part_name+".ini", "wb+")
     output_file.write(output_bytes)
     output_file.close()
     logging.info("Generate "+part_name+"'s ini config file completed.")
@@ -318,13 +327,14 @@ def output_trianglelist_ini_file(pointlist_indices, input_ib_hash, part_name):
 
 
 def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info=MergeInfo()):
+
     part_name = merge_info.part_name
     read_pointlist_element_list = merge_info.element_list
 
     logging.info("Stat execute: merge_pointlist_files_v2")
 
     logging.info("Start to move ps-t0 files to output folder.")
-    move_related_files(trianglelist_indices, move_dds=True, only_pst7=True)
+    move_related_files(trianglelist_indices, preset_config["General"]["OutputFolder"], move_dds=True, only_pst7=True)
     logging.info(split_str)
 
     logging.info("Start to read info from pointlist vb files(Only from pointlist files).")
@@ -385,8 +395,8 @@ def merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info
         output_partname = part_name + str(index)
 
         ib_file_byte = ib_file_bytes[index]
-        output_vbname = "output/" + merge_info.draw_ib + "-" + output_partname + "-vb0.txt"
-        output_ibname = "output/" + merge_info.draw_ib + "-" + output_partname + "-ib.txt"
+        output_vbname = preset_config["General"]["OutputFolder"] + merge_info.draw_ib + "-" + output_partname + "-vb0.txt"
+        output_ibname = preset_config["General"]["OutputFolder"] + merge_info.draw_ib + "-" + output_partname + "-ib.txt"
         output_vb_fileinfo.output_filename = output_vbname
 
         logging.info("Output Step 1: Write to ib file.")
@@ -678,42 +688,46 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
 
-    pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2(merge_info.draw_ib, merge_info.root_vs, use_pointlist_tech=merge_info.use_pointlist)
+    pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2()
 
     if use_pointlist_tech:
         if len(pointlist_indices) == 0:
-            logging.error("Can't found any pointlist file,please turn pointlist tech flag to False for ['" + merge_info.part_name + "']")
+            logging.error("Can't find any pointlist file,please turn pointlist tech flag to False for:")
+            logging.error("['" + preset_config["Merge"]["part_name"] + "']")
             exit(1)
+
         if merge_info.only_pointlist:
             merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info)
         else:
-            merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info.part_name)
+            # TODO GIMI use this way to collect TEXCOORD info,should try it later.
+            merge_pointlist_files(pointlist_indices, trianglelist_indices, preset_config["Merge"]["part_name"])
     else:
+        # we normally won't use this.
         logging.info("Only fetch from trianglelist files.")
-        merge_trianglelist_files(trianglelist_indices, merge_info.part_name)
+        merge_trianglelist_files(trianglelist_indices, preset_config["Merge"]["part_name"])
 
 
 if __name__ == "__main__":
 
-    config = configparser.ConfigParser()
-    config.read('configs/preset.ini')
+    preset_config = configparser.ConfigParser()
+    preset_config.read('configs/preset.ini')
     split_str = "----------------------------------------------------------------------------------------------"
 
     # General Info
-    GameName = config["General"]["GameName"]
-    output_folder_name = config["General"]["OutputFolderName"]
-    LoaderFolder = config["General"]["LoaderFolder"]
-    FrameAnalyseFolder = config["General"]["FrameAnalyseFolder"]
-    work_dir = LoaderFolder + FrameAnalyseFolder + "/"
+    GameName = preset_config["General"]["GameName"]
+    OutputFolder = preset_config["General"]["OutputFolder"]
+    LoaderFolder = preset_config["General"]["LoaderFolder"]
+    FrameAnalyseFolder = preset_config["General"]["FrameAnalyseFolder"]
+    WorkFolder = LoaderFolder + FrameAnalyseFolder + "/"
 
     # Merge Info
     merge_info = MergeInfo()
-    merge_info.part_name = config["Merge"]["part_name"]
-    merge_info.type = config["Merge"]["type"]
-    merge_info.root_vs = config["Merge"]["root_vs"]
-    merge_info.draw_ib = config["Merge"]["draw_ib"]
-    merge_info.use_pointlist = config["Merge"].getboolean("use_pointlist")
-    merge_info.only_pointlist = config["Merge"].getboolean("only_pointlist")
+    merge_info.part_name = preset_config["Merge"]["part_name"]
+    merge_info.type = preset_config["Merge"]["type"]
+    merge_info.root_vs = preset_config["Merge"]["root_vs"]
+    merge_info.draw_ib = preset_config["Merge"]["draw_ib"]
+    merge_info.use_pointlist = preset_config["Merge"].getboolean("use_pointlist")
+    merge_info.only_pointlist = preset_config["Merge"].getboolean("only_pointlist")
 
     # You need to check this before every merge
     merge_info.element_list = [b"POSITION", b"NORMAL", b"TANGENT"
@@ -727,23 +741,22 @@ if __name__ == "__main__":
                      ,b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
                     }
 
-    # switch to work dir.
-    os.chdir(work_dir)
-    if not os.path.exists('output'):
-        os.mkdir('output')
+    # Make sure the OutputFolder exists.
+    if not os.path.exists(OutputFolder):
+        os.mkdir(OutputFolder)
 
     # set the output log file.
-    logging.basicConfig(filename=work_dir + "output/" + str(time.strftime('%Y-%m-%d_%H_%M_%S_')) + str(time.time_ns()) + '.log', level=logging.DEBUG)
+    logging.basicConfig(filename=OutputFolder + str(time.strftime('%Y-%m-%d_%H_%M_%S_')) + str(time.time_ns()) + '.log', level=logging.DEBUG)
 
-    logging.info("HSR MergeScript Current Version V2.1")
-    logging.info("Switch to work dir: " + work_dir)
+    logging.info("HSR MergeScript Current Version V0.1")
+    logging.info("Switch to work dir: " + WorkFolder)
     logging.info(split_str)
 
     logging.info("Current Game: " + GameName)
     logging.info("Set RootVS To: " + merge_info.root_vs)
     logging.info("Set LoaderFolder To:" + LoaderFolder)
     logging.info("Set FrameAnalyseFolder To: " + FrameAnalyseFolder)
-    logging.info("Set work dir to: " + work_dir)
+    logging.info("Set work dir to: " + WorkFolder)
     logging.info(split_str)
 
     logging.info("Start to process hash: " + merge_info.draw_ib)
