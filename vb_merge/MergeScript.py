@@ -267,7 +267,11 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_fi
     output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\n\r\n")
     # output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\nvb3 = Resource_POSITION\r\n\r\n")
 
-    output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\nhandling = skip\r\ndrawindexed = auto\r\n\r\n")
+    # TODO drawindexed cannot work perfectly! need to use draw xxx,0  xxx is calculated in GIMI's blender script.
+    #  we now can make sure that this xxx value is comes from
+    #  (the length of position file's bytes / the stride of position file)
+    output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\nhandling = skip\r\ndrawindexed = auto\r\n;draw = xxx,0\r\n\r\n")
+
     output_bytes = output_bytes + (b"[TextureOverride_BLEND]\r\nhash = "+blend_vb.encode()+b"\r\nvb2 = Resource_BLEND\r\n\r\n")
     output_bytes = output_bytes + (b";[TextureOverride_VB_SKIP_Other_1]\r\n;hash = \r\n;handling = skip\r\n\r\n")
 
@@ -710,7 +714,7 @@ if __name__ == "__main__":
     LoaderFolder = "C:/Program Files/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-05-01-081451"
+    FrameAnalyseFolder = "FrameAnalysis-2023-05-01-102703"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
     # RootActionVS = "e8425f64cfb887cd"
@@ -720,7 +724,7 @@ if __name__ == "__main__":
     merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "f4eb23b2"
+    merge_info.draw_ib = "c20cd648"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 

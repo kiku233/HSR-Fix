@@ -159,23 +159,21 @@ def get_header_info(vb_file_name, max_element_number):
     return header_info
 
 
-def split_file(source_name, max_element_number=b"5"):
+def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
     """
-    :param source_name:
-    :param max_element_number:  要从fmt文件中读取的最大的element的索引，从0开始读取到这个最大索引结束
-    # set element number ,Naraka will be 5 ,and plus TEXCOORD 1 ,it will be 6.
-    这里是5的原因是有6个元素：
-    POSITION、NORMAL、TANGENT、BLENDWEIGHTS、BLENDINDICES、TEXCOORD
-    有一些模型包含多个TEXCOORD，比如殷紫萍红皮上衣包含TEXCOORD和TEXCOORD1，此时设为6
+    About source_name:
+    This is the .vb and .ib filename you want to split, need to specify by yourself.
 
-    这里之所以要手动指定一个数字，是因为有时重新导入到游戏中时，在存在多个TEXCOORD的情况下，只有第一个TEXCOORD是有用的
-    比如TEXCOORD1的索引为b"6"，则我们只需要读取到b"5"的TEXCOORD就够了，所以这里的数字由人为手动控制，便于调试
-    关于第二个TEXCOORD1并未导入游戏导致模型变成透明，这一点还需验证
+    About max_element_number:
+    Start from 0 to your max element number,there is a element list in header info.
+    so just put the max element number here,so the script could work well.
 
-    推测应该是两个TEXCOORD都需要导入到vb1，殷紫萍红皮没有导入第二个TEXCOORD所以才导致游戏内透明，部分无法加载的问题。
-    且导入到blender中时，必须包含完整的TEXCOORD和TEXCOORD1。
-    所以推测TEXCOORD1是不可缺少的。
-    :return:
+    About repair_tangent:
+    Because these game do not put real TANGENT in the tangent slot,it put something else
+    looks like is another DIY type of NORMAL value,so the TANGENT value need to be fix.
+    now there is 2 value can be select:  simple, nearest
+
+    :return: None
     """
 
     vb_name = source_name + ".vb"
@@ -224,6 +222,18 @@ def split_file(source_name, max_element_number=b"5"):
             vertex_data_list[i].append(vertex_data)
 
     # print(vertex_data_list[0])
+
+
+    if repair_tangent is None:
+        print("will not repair tangent,the model in game may lose some outline info!")
+
+    if repair_tangent == "simple":
+        # TODO need to repair the TANGENT
+        pass
+
+    if repair_tangent == "nearest":
+        # TODO need to repair the TANGENT
+        pass
 
     position_vertex_data = [[] for i in range(vertex_count)]
     blend_vertex_data = [[] for i in range(vertex_count)]
@@ -277,7 +287,9 @@ if __name__ == "__main__":
 
     for source_name in source_names:
         print("Processing " + source_name + ".vb")
-        split_file(source_name, max_element_number=b"7")
+        split_file(source_name, repair_tangent="simple", max_element_number=b"7")
+
+        # split_file(source_name, max_element_number=b"7")
 
     print("----------------------------------------------------------\r\nAll process done！")
 
