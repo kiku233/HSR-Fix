@@ -261,10 +261,13 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_fi
     output_bytes = output_bytes + (b"[Resource_IB_FILE]\r\ntype = Buffer\r\nformat = DXGI_FORMAT_R16_UINT\r\nfilename = " + part_name.encode() + b".ib\r\n\r\n")
     output_bytes = output_bytes + (b"[Resource_"+part_name.encode() + b"]\r\nfilename = "+ part_name.encode()+b".png\r\n\r\n")
 
-    output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nmatch_first_index = "+ match_first_index +b"\r\nhandling = skip\r\nib = Resource_IB_FILE\r\nvb1 = Resource_TEXCOORD\r\n;ps-t0 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
+    output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nmatch_first_index = "+ match_first_index +b"\r\nhandling = skip\r\nib = Resource_IB_FILE\r\n;ps-t0 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
     # In HSR,we need a vb3 to fix the outline problem.
-    output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\nvb3 = Resource_POSITION\r\n\r\n")
-    # output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\n\r\n")
+    # Normally we don't need a vb3,but maybe sometime it need.
+    output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\n\r\n")
+    # output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\nvb3 = Resource_POSITION\r\n\r\n")
+
+    output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\nhandling = skip\r\ndrawindexed = auto\r\n\r\n")
     output_bytes = output_bytes + (b"[TextureOverride_BLEND]\r\nhash = "+blend_vb.encode()+b"\r\nvb2 = Resource_BLEND\r\n\r\n")
     output_bytes = output_bytes + (b";[TextureOverride_VB_SKIP_Other_1]\r\n;hash = \r\n;handling = skip\r\n\r\n")
 
@@ -707,7 +710,7 @@ if __name__ == "__main__":
     LoaderFolder = "C:/Program Files/Star Rail/Game/"
 
     # Set work dir, here is your FrameAnalysis dump dir.
-    FrameAnalyseFolder = "FrameAnalysis-2023-04-30-212543"
+    FrameAnalyseFolder = "FrameAnalysis-2023-05-01-081451"
 
     # Here is the ROOT VS the game currently use, SR use e8425f64cfb887cd as it's ROOT ACTION VS now.
     # RootActionVS = "e8425f64cfb887cd"
@@ -717,20 +720,22 @@ if __name__ == "__main__":
     merge_info.part_name = "body"
     merge_info.type = "cloth"
     merge_info.root_vs = "e8425f64cfb887cd"
-    merge_info.draw_ib = "351d8570"
+    merge_info.draw_ib = "f4eb23b2"
     merge_info.use_pointlist = True
     merge_info.only_pointlist = True
 
     # TODO 输入时指定ELEMENT元素的各种属性，包括输出的长度
     merge_info.element_list = [b"POSITION", b"NORMAL", b"TANGENT"
-                               , b"COLOR",b"TEXCOORD",b"TEXCOORD1"
+                               , b"COLOR",b"TEXCOORD"
+        ,b"TEXCOORD1"
                                ,b"BLENDWEIGHTS", b"BLENDINDICES"]
 
     # Remember this location must be manually write.
     # control their order to control the final vb0 file's vertex-data part element order.
     info_location_cloth = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
-                     b"COLOR": "vb1",b"TEXCOORD": "vb1",b"TEXCOORD1": "vb1",
-                     b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
+                     b"COLOR": "vb1",b"TEXCOORD": "vb1"
+        ,b"TEXCOORD1": "vb1"
+                     ,b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
                     }
 
     # info location for weapon
