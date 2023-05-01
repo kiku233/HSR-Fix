@@ -471,7 +471,6 @@ def move_related_files(indices, output_folder, move_dds=False, only_pst7=False, 
         logging.info("----------------------------------------------------------------")
         logging.info("Start to move VS-CB files.")
         # Start to move VS-CB files.
-        filenames = glob.glob('*vs-cb*')
         filenames = get_filter_filenames(get_work_folder(), "vs-cb", "")
 
         for filename in filenames:

@@ -687,7 +687,6 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
 
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
-
     pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2()
 
     if use_pointlist_tech:
@@ -699,10 +698,11 @@ def start_merge_files(merge_info= MergeInfo()):
         if merge_info.only_pointlist:
             merge_pointlist_files_v2(pointlist_indices, trianglelist_indices, merge_info)
         else:
-            # TODO GIMI use this way to collect TEXCOORD info,should try it later.
+            # TODO GIMI use this way to collect TEXCOORD info,must try it later.
             merge_pointlist_files(pointlist_indices, trianglelist_indices, preset_config["Merge"]["part_name"])
     else:
-        # we normally won't use this.
+        # TODO we normally won't use this, but try it later.
+
         logging.info("Only fetch from trianglelist files.")
         merge_trianglelist_files(trianglelist_indices, preset_config["Merge"]["part_name"])
 
@@ -769,6 +769,3 @@ if __name__ == "__main__":
     logging.info(split_str)
 
     logging.info("----------------------------------------------------------\r\nAll process done！")
-
-
-

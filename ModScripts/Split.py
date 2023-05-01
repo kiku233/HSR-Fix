@@ -12,10 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
-import glob
+
 import os
-import re
-import json
+import configparser
 
 
 class Element:
@@ -34,20 +33,9 @@ class Element:
     byte_width = None
 
     def revise(self):
-        if self.semantic_name == b"POSITION":
-            self.byte_width = 12
-        if self.semantic_name == b"NORMAL":
-            self.byte_width = 12
-        if self.semantic_name == b"TANGENT":
-            self.byte_width = 16
-        if self.semantic_name == b"COLOR":
-            self.byte_width = 4
-        if self.semantic_name == b"TEXCOORD":
-            self.byte_width = 8
-        if self.semantic_name == b"BLENDWEIGHTS":
-            self.byte_width = 16
-        if self.semantic_name == b"BLENDINDICES":
-            self.byte_width = 16
+        vertex_config = configparser.ConfigParser()
+        vertex_config.read('configs/vertex_attr_body.ini')
+        self.byte_width = vertex_config[self.semantic_name.decode()].getint("byte_width")
 
 
 class HeaderInfo:
@@ -67,7 +55,7 @@ def get_header_info(vb_file_name, max_element_number):
     :param max_element_number:  byte类型，例如b"5"，代表读取的fmt文件一共有6个元素，因为是从0开始的
     :return:
     """
-    vb_file = open(vb_file_name, 'rb')
+    vb_file = open(SplitFolder+vb_file_name, 'rb')
 
     header_info = HeaderInfo()
 
@@ -179,7 +167,7 @@ def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
     vb_name = source_name + ".vb"
     fmt_name = source_name + ".fmt"
 
-    vb_file = open(vb_name, "rb")
+    vb_file = open(SplitFolder+vb_name, "rb")
     vb_file_buffer = vb_file.read()
     vb_file.close()
 
@@ -281,18 +269,17 @@ def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
     output_blend_filename = source_name + "_BLEND.buf"
     output_texcoord_filename = source_name + "_TEXCOORD.buf"
 
-    with open(output_position_filename, "wb+") as output_position_file:
+    with open(SplitFolder + output_position_filename, "wb+") as output_position_file:
         output_position_file.write(position_bytes)
-    with open(output_blend_filename, "wb+") as output_blend_file:
+    with open(SplitFolder + output_blend_filename, "wb+") as output_blend_file:
         output_blend_file.write(blend_bytes)
-    with open(output_texcoord_filename, "wb+") as output_texcoord_file:
+    with open(SplitFolder + output_texcoord_filename, "wb+") as output_texcoord_file:
         output_texcoord_file.write(texcoord_bytes)
 
 
 if __name__ == "__main__":
     # set work dir.
-    work_dir = "C:/Program Files/Star Rail/Game/HSRTest"
-    os.chdir(work_dir)
+    SplitFolder = "C:/Program Files/Star Rail/Game/HSRTest/"
 
     # combine the output filename.
     source_names = ["body0"]
