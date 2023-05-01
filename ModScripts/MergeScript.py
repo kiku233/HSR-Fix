@@ -694,31 +694,9 @@ def start_merge_files(merge_info= MergeInfo()):
 
 
 if __name__ == "__main__":
-    """
-    How to use these scripts:
-    (1) Before start,you need to set a variable called LoaderFolder which is your d3d11.dll located.
-    (2) First,you need to Press F8 to dump a FrameAnalysisFolder,and copy the folder path,
-    paste it to variable:FrameAnalyseFolder.
-    (3) Then you need to open hunting in game,switch between index buffer,select the index buffer you want to 
-    import into blender,and then copy and paste it to variable:merge_info.draw_ib
-    (4) Finally you could run this script to generate the merged vb0 files,and use them to import into blender.
-    
-    These scripts is designed for mod developer,so you may need to take time to read it and learn how to use it.
-    Please notice the log file generated,it's very useful to debug when program fail with unknwon error.
-    
-    Todo list:
-    # TODO solve the vertex limit problem,
-    #  because we can't correctly replace a object which vertex number is more than original object.
-    """
-
-    # TODO we need a json file to store the information to config,
-    #  and use it to pass the draw value
-    #  (1) Merge vb0 files,generate config file,use it to import into blender,modify and export
-    #  (2) Split the output ib and vb file seperatelly,and write draw number in config
-    #  (2) Generate a final .ini file used to load back to game.
 
     config = configparser.ConfigParser()
-    config.read('preset.ini')
+    config.read('configs/preset.ini')
     split_str = "----------------------------------------------------------------------------------------------"
 
     # General Info
@@ -726,6 +704,7 @@ if __name__ == "__main__":
     output_folder_name = config["General"]["OutputFolderName"]
     LoaderFolder = config["General"]["LoaderFolder"]
     FrameAnalyseFolder = config["General"]["FrameAnalyseFolder"]
+    work_dir = LoaderFolder + FrameAnalyseFolder + "/"
 
     # Merge Info
     merge_info = MergeInfo()
@@ -733,33 +712,20 @@ if __name__ == "__main__":
     merge_info.type = config["Merge"]["type"]
     merge_info.root_vs = config["Merge"]["root_vs"]
     merge_info.draw_ib = config["Merge"]["draw_ib"]
-    merge_info.use_pointlist = config["Merge"]["use_pointlist"]
-    merge_info.only_pointlist = config["Merge"]["only_pointlist"]
+    merge_info.use_pointlist = config["Merge"].getboolean("use_pointlist")
+    merge_info.only_pointlist = config["Merge"].getboolean("only_pointlist")
 
-    # TODO 输入时指定ELEMENT元素的各种属性，包括输出的长度
+    # You need to check this before every merge
     merge_info.element_list = [b"POSITION", b"NORMAL", b"TANGENT"
                                , b"COLOR",b"TEXCOORD"
         #,b"TEXCOORD1"
                                ,b"BLENDWEIGHTS", b"BLENDINDICES"]
 
-    # Remember this location must be manually write.
-    # control their order to control the final vb0 file's vertex-data part element order.
-    info_location_cloth = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
+    merge_info.info_location = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
                      b"COLOR": "vb1",b"TEXCOORD": "vb1"
         #,b"TEXCOORD1": "vb1"
                      ,b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
                     }
-
-    # info location for weapon
-    # info_location_weapon = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
-    #                        b"COLOR": "vb1", b"TEXCOORD": "vb1", b"TEXCOORD1": "vb1",
-    #                        b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
-    #                        }
-
-    merge_info.info_location = info_location_cloth
-
-    # work dir
-    work_dir = LoaderFolder + FrameAnalyseFolder + "/"
 
     # switch to work dir.
     os.chdir(work_dir)

@@ -1,0 +1,7 @@
+    # TODO we need a json file to store the information to config
+    #  and use it to pass the draw value
+    #  (1) Merge vb0 files,generate config file,use it to import into blender,modify and export
+    #  (2) Split the output ib and vb file seperatelly,and write draw number in config
+    #  (2) Generate a final .ini file used to load back to game.
+
+TODO
