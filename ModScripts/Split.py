@@ -279,7 +279,7 @@ def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
 
 if __name__ == "__main__":
     # set work dir.
-    SplitFolder = "C:/Program Files/Star Rail/Game/HSRTest/"
+    SplitFolder = "C:/Program Files/Star Rail/Game/output/"
 
     # combine the output filename.
     source_names = ["body0"]

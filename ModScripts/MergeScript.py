@@ -116,6 +116,56 @@ def get_pointlit_and_trianglelist_indices_V2():
     return pointlist_indices, trianglelist_indices
 
 
+def save_output_ini_body(pointlist_indices, merge_info=MergeInfo()):
+    # don't care if pointlist_indices has many candidates,because we only use one of them
+    # because they are totally same,just show twice in pointlist files.
+    filenames = sorted(get_filter_filenames(WorkFolder,pointlist_indices[0] + "-vb",".txt"))
+
+    tmp_config = configparser.ConfigParser()
+    tmp_config.read('configs/tmp.ini')
+
+    position_vb = filenames[0]
+    position_vb = position_vb[position_vb.find("-vb0=") + 5:position_vb.find("-vs=")]
+
+    texcoord_vb = filenames[1]
+    texcoord_vb = texcoord_vb[texcoord_vb.find("-vb1=") + 5:texcoord_vb.find("-vs=")]
+
+    blend_vb = filenames[2]
+    blend_vb = blend_vb[blend_vb.find("-vb2=") + 5:blend_vb.find("-vs=")]
+
+    tmp_config.set("Ini", "position_vb", position_vb)
+    tmp_config.set("Ini", "texcoord_vb", texcoord_vb)
+    tmp_config.set("Ini", "blend_vb", blend_vb)
+
+    vertex_config = configparser.ConfigParser()
+    vertex_config.read('configs/vertex_attr_body.ini')
+
+    element_list = merge_info.info_location.keys()
+
+    position_stride = 0
+    texcoord_stride = 0
+    blend_stride = 0
+
+    for element in element_list:
+        byte_width = vertex_config[element.decode()].getint("byte_width")
+        print(byte_width)
+        print("---------")
+        if merge_info.info_location.get(element) == "vb0":
+            position_stride = position_stride + byte_width
+        if merge_info.info_location.get(element) == "vb1":
+            texcoord_stride = texcoord_stride + byte_width
+        if merge_info.info_location.get(element) == "vb2":
+            blend_stride = blend_stride + byte_width
+
+    tmp_config.set("Ini", "position_stride", str(position_stride))
+    tmp_config.set("Ini", "texcoord_stride", str(texcoord_stride))
+    tmp_config.set("Ini", "blend_stride", str(blend_stride))
+
+
+    # 保存
+    tmp_config.write(open("configs/tmp.ini","w"))
+
+
 def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_first_index):
     # don't care if pointlist_indices has many candidates,because we only use one of them
     # because they are totally same,just show twice in pointlist files.
@@ -173,7 +223,9 @@ def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_fi
     logging.info("Generate "+part_name+"'s ini config file completed.")
 
 
+
 def output_trianglelist_ini_file(pointlist_indices, input_ib_hash, part_name):
+
     print("Start to output ini file.")
     filenames = sorted(glob.glob(pointlist_indices[0] + '-vb*txt'))
     position_vb = filenames[0]
@@ -259,9 +311,12 @@ def merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info=Me
 
     ib_file_bytes, ib_file_first_index_list = get_unique_ib_bytes_by_indices(trianglelist_indices)
 
+    logging.info("Save ini information to tmp.ini")
+    save_output_ini_body(pointlist_indices, merge_info)
+
     logging.info("Output to file.")
     for index in range(len(ib_file_bytes)):
-        output_partname = part_name + str(index)
+        output_partname = part_name + "_part" + str(index)
 
         ib_file_byte = ib_file_bytes[index]
         output_vbname = preset_config["General"]["OutputFolder"] + merge_info.draw_ib + "-" + output_partname + "-vb0.txt"
@@ -418,6 +473,7 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
     output_trianglelist_ini_file(final_output_indices, merge_info.draw_ib, part_name)
 
 
+
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
     pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2()
@@ -442,7 +498,6 @@ def start_merge_files(merge_info= MergeInfo()):
 
 
 if __name__ == "__main__":
-
     preset_config = configparser.ConfigParser()
     preset_config.read('configs/preset.ini')
     split_str = "----------------------------------------------------------------------------------------------"
@@ -463,13 +518,20 @@ if __name__ == "__main__":
     merge_info.use_pointlist = preset_config["Merge"].getboolean("use_pointlist")
     merge_info.only_pointlist = preset_config["Merge"].getboolean("only_pointlist")
 
+    # TODO 从配置文件中读取vb0 vb1等位置信息，然后组装起来放到这里，实现自动化
+
+    # TODO 继续测试佩拉的mod为什么他的能用我的不能用
     merge_info.info_location = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
                      b"COLOR": "vb1",b"TEXCOORD": "vb1"
-        #,b"TEXCOORD1": "vb1"
+        ,b"TEXCOORD1": "vb1"
                      ,b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
                     }
 
     # Make sure the OutputFolder exists.
+    DeleteOutputFolder = preset_config["General"].getboolean("DeleteOutputFolder")
+
+    if DeleteOutputFolder:
+        shutil.rmtree(OutputFolder)
     if not os.path.exists(OutputFolder):
         os.mkdir(OutputFolder)
 
