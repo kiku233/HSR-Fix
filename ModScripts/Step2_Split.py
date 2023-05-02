@@ -285,13 +285,16 @@ if __name__ == "__main__":
 
     # get the element list need to split.
     preset_config = configparser.ConfigParser()
-    preset_config.read('configs/preset.ini')
+    preset_config.read('configs/preset.ini',"utf-8")
     max_element_number = str(len(preset_config["Merge"]["element_list"].split(",")) - 1).encode()
 
     # get the part's name which need to be split.
     tmp_config = configparser.ConfigParser()
     tmp_config.read('configs/tmp.ini')
     part_names = tmp_config["Ini"]["part_names"].split(",")
+
+    if len(part_names) == 1:
+        part_names = [preset_config["General"]["mod_name"]]
 
     repair_tangent = preset_config["Split"]["repair_tangent"]
     draw_numbers = ""
