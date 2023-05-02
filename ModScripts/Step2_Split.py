@@ -211,7 +211,6 @@ def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
 
     # print(vertex_data_list[0])
 
-
     if repair_tangent is None:
         print("will not repair tangent,the model in game may lose some outline info!")
 
@@ -276,6 +275,9 @@ def split_file(source_name,repair_tangent=None,max_element_number=b"5"):
     with open(SplitFolder + output_texcoord_filename, "wb+") as output_texcoord_file:
         output_texcoord_file.write(texcoord_bytes)
 
+    # return position_length as draw_number
+    return position_length
+
 
 if __name__ == "__main__":
     # set work dir.
@@ -292,9 +294,14 @@ if __name__ == "__main__":
     part_names = tmp_config["Ini"]["part_names"].split(",")
 
     repair_tangent = preset_config["Split"]["repair_tangent"]
+    draw_numbers = ""
     for part_name in part_names:
         print("Processing " + part_name + ".vb")
-        split_file(part_name, repair_tangent=repair_tangent, max_element_number=max_element_number)
-
+        print(max_element_number)
+        draw_number = split_file(part_name, repair_tangent=repair_tangent, max_element_number=max_element_number)
+        draw_numbers = draw_numbers + str(int(draw_number)) + ","
+    draw_numbers = draw_numbers[0:len(draw_numbers)-1]
+    tmp_config.set("Ini","draw_numbers", draw_numbers)
+    tmp_config.write(open("configs/tmp.ini", "w"))
     print("----------------------------------------------------------\r\nAll process done！")
 

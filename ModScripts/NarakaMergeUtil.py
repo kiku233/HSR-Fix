@@ -43,7 +43,7 @@ class MergeInfo:
     # if multiple pointlist file appears,you can force to use a special pointlist file index.
     force_pointlist_index = None
     # the element list you want to extract,The vertex data you want to read from vb file.
-    element_list = [b"POSITION", b"NORMAL", b"TANGENT", b"BLENDWEIGHTS", b"BLENDINDICES", b"TEXCOORD"]
+    element_list = None
 
 
 class HeaderInfo:
@@ -116,95 +116,6 @@ class VbFileInfo:
     output_filename = None
 
 
-def get_header_info(vb_file_name, max_element_number):
-    WorkFolder = get_work_folder()
-    vb_file = open(WorkFolder + vb_file_name, 'rb')
-
-    header_info = HeaderInfo()
-
-    # Use to control the header process.
-    header_process_over = False
-    # Use to control the element process.
-    elements_all_process_over = False
-    elements_single_process_over = False
-
-    element_list = []
-
-    element_tmp = Element()
-
-    while vb_file.tell() < os.path.getsize(vb_file.name):
-        # Read a line.
-        line = vb_file.readline()
-        # Process header part.
-        if not header_process_over:
-            # Set the fitst vertex,because this value in every vb file is totally same,so we get the final file's first vertex is safe.
-            if line.startswith(b"first vertex: "):
-                first_vertex = line[line.find(b"first vertex: ") + b"first vertex: ".__len__():line.find(b"\r\n")]
-                header_info.first_vertex = first_vertex
-            # Set vertex count, similarly it's safe to get the final vb file's vertex count.
-            if line.startswith(b"vertex count: "):
-                vertex_count = line[line.find(b"vertex count: ") + b"vertex count: ".__len__():line.find(b"\r\n")]
-                header_info.vertex_count = vertex_count
-            # Set topology, similarly it's safe to get the final vb file's vertex count.
-            if line.startswith(b"topology: "):
-                topology = line[line.find(b"topology: ") + b"topology: ".__len__():line.find(b"\r\n")]
-                header_info.topology = topology
-
-            if header_info.topology is not None:
-                header_process_over = True
-
-        # Process element list.
-        if not elements_all_process_over:
-
-            if line.startswith(b"element["):
-                # If detected "element[" ,that means we start to process a new element.
-                elements_single_process_over = False
-                # Initialize ElementTmp
-                element_tmp = Element()
-                element_number = line[line.find(b"element[") + b"element[".__len__():line.find(b"]:\r\n")]
-                element_tmp.element_number = element_number
-            if line.startswith(b"  SemanticName: "):
-                semantic_name = line[line.find(b"  SemanticName: ") + b"  SemanticName: ".__len__():line.find(b"\r\n")]
-                element_tmp.semantic_name = semantic_name
-            if line.startswith(b"  SemanticIndex: "):
-                semantic_index = line[
-                                 line.find(b"  SemanticIndex: ") + b"  SemanticIndex: ".__len__():line.find(b"\r\n")]
-                element_tmp.semantic_index = semantic_index
-            if line.startswith(b"  Format: "):
-                format = line[line.find(b"  Format: ") + b"  Format: ".__len__():line.find(b"\r\n")]
-                element_tmp.format = format
-            if line.startswith(b"  InputSlot: "):
-                input_slot = line[line.find(b"  InputSlot: ") + b"  InputSlot: ".__len__():line.find(b"\r\n")]
-                element_tmp.input_slot = input_slot
-                # Because we finally get only one vb file,so every input_slot should be set to 0.
-                element_tmp.input_slot = b"0"
-            if line.startswith(b"  AlignedByteOffset: "):
-                aligned_byte_offset = line[line.find(
-                    b"  AlignedByteOffset: ") + b"  AlignedByteOffset: ".__len__():line.find(b"\r\n")]
-                element_tmp.aligned_byte_offset = aligned_byte_offset
-            if line.startswith(b"  InputSlotClass: "):
-                input_slot_class = line[line.find(b"  InputSlotClass: ") + b"  InputSlotClass: ".__len__():line.find(
-                    b"\r\n")]
-                element_tmp.input_slot_class = input_slot_class
-            if line.startswith(b"  InstanceDataStepRate: "):
-                instance_data_step_rate = line[line.find(
-                    b"  InstanceDataStepRate: ") + b"  InstanceDataStepRate: ".__len__():line.find(b"\r\n")]
-                element_tmp.instance_data_step_rate = instance_data_step_rate
-
-                # Put element_tmp into element_list.
-                element_list.append(element_tmp)
-                # Process single element over.
-                elements_single_process_over = True
-
-            if element_tmp.element_number == max_element_number and elements_single_process_over:
-                header_info.elementlist = element_list
-                elements_all_process_over = True
-                break
-
-    # Safely close the file.
-    vb_file.close()
-    return header_info
-
 def get_work_folder():
     preset_config = configparser.ConfigParser()
     preset_config.read('configs/preset.ini')
@@ -214,7 +125,7 @@ def get_work_folder():
     return WorkFolder
 
 
-def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), only_vb1=False, sanity_check=False):
+def read_vertex_data_chunk_list_gracefully(file_index, merge_info, only_vb1=False, sanity_check=False):
     """
     :param file_index:  the file index numbers you want to process.
     :param read_element_list:  the element name list you need to read.
@@ -231,14 +142,11 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
     else:
         vb_filenames = sorted(get_filter_filenames(WorkFolder, file_index + "-vb", ".txt"))
 
-
     print("开始读取vertex-data部分：")
     print("file_index: " + str(file_index))
     print("vb_filenames: " + str(vb_filenames))
 
-    header_info = get_header_info(vb_filenames[0], b"9")
-
-    vertex_count = header_info.vertex_count
+    topology ,vertex_count = get_topology_vertexcount(WorkFolder + vb_filenames[0])
     print(vertex_count)
 
     vertex_data_chunk_list = [[] for i in range(int(str(vertex_count.decode())))]
@@ -262,12 +170,12 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
     print(vb_filenames_rearrange)
 
     logging.info("重新排序后的顺序:")
-    # TODO 这里重新排序后并不是正确的顺序，因为是由merge的location指定的
     logging.info(vb_filenames_rearrange)
 
     for filename in vb_filenames_rearrange:
         # Get the vb file's slot number.
         vb_number = filename[filename.find("-vb"):filename.find("=")][1:].encode()
+
         # Open the vb file.
         vb_file = open(WorkFolder + filename, 'rb')
         # For temporarily record the last line.
@@ -302,6 +210,10 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
                 break
         vb_file.close()
 
+    print(vertex_data_chunk_list[0])
+    # 看起来这里是把所有的vb0文件的所有的Vertexdata全部拿来了
+
+
     # Combine every chunk split part by corresponding index.
     new_vertex_data_chunk_list = []
     for vertex_data_chunk in vertex_data_chunk_list:
@@ -332,6 +244,8 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
             # if repeat_value_time.get(vertex_data.data) == 1 or vertex_data.element_name.startswith(b"TEXCOORD"):
             if repeat_value_time.get(vertex_data.data) == 1:
                 unique_element_names.append(vertex_data.element_name)
+        print("unique_element_names")
+        print(unique_element_names)
 
         # Retain vertex_data based on the unique element name.
         new_vertex_data_chunk_list = []
@@ -343,32 +257,43 @@ def read_vertex_data_chunk_list_gracefully(file_index, merge_info=MergeInfo(), o
             new_vertex_data_chunk_list.append(new_vertex_data_chunk)
         vertex_data_chunk_list = new_vertex_data_chunk_list
 
+    preset_config = configparser.ConfigParser()
+    preset_config.read('configs/preset.ini')
+    input_element_list = merge_info.element_list
+    print(input_element_list)
+
     # Retain some content based on the input element_list.
     revised_vertex_data_chunk_list = []
     for index in range(len(vertex_data_chunk_list)):
         vertex_data_chunk = vertex_data_chunk_list[index]
         new_vertex_data_chunk = []
         for vertex_data in vertex_data_chunk:
-            if vertex_data.element_name in merge_info.element_list:
+            if vertex_data.element_name in input_element_list:
                 new_vertex_data_chunk.append(vertex_data)
         revised_vertex_data_chunk_list.append(new_vertex_data_chunk)
 
+    print(revised_vertex_data_chunk_list)
     return revised_vertex_data_chunk_list
 
 
 def output_vb_file(vb_file_info):
     header_info = vb_file_info.header_info
     vertex_data_chunk_list = vb_file_info.vertex_data_chunk_list
+
     output_filename = vb_file_info.output_filename
     logging.info("Starting output to file: " + output_filename)
 
     logging.info("Grab the first vertex_data, and judge which element exists.")
     vertex_data_chunk_test = vertex_data_chunk_list[0]
+    print(vertex_data_chunk_test)
     vertex_data_chunk_has_element_list = []
 
     logging.info("Default we think all element does not exist,unless we detected it.")
     for vertex_data in vertex_data_chunk_test:
         vertex_data_chunk_has_element_list.append(vertex_data.element_name)
+
+    # TODO 传到这里的时候参数就少了
+    print(vertex_data_chunk_has_element_list)
 
     logging.info("Get the element list which can be output.")
     header_info_has_element_list = []

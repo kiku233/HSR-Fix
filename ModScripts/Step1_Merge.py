@@ -253,9 +253,10 @@ def output_trianglelist_ini_file(pointlist_indices, input_ib_hash, part_name):
     output_file.close()
 
 
-def merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info=MergeInfo()):
+def merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info):
     part_name = preset_config["Merge"]["part_name"]
     read_pointlist_element_list = merge_info.info_location.keys()
+    print(read_pointlist_element_list)
 
     logging.info("Start to move ps-t0 files to output folder.")
     move_related_files(trianglelist_indices, preset_config["General"]["OutputFolder"], move_dds=True, only_pst7=True)
@@ -493,7 +494,7 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
     output_trianglelist_ini_file(final_output_indices, merge_info.draw_ib, part_name)
 
 
-def start_merge_files(merge_info= MergeInfo()):
+def start_merge_files(merge_info):
     logging.info("Start to read pointlist and trianglelist indices.")
     pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2()
 
@@ -544,11 +545,16 @@ if __name__ == "__main__":
     else:
         vertex_config.read('configs/vertex_attr_body.ini')
     element_list = preset_config["Merge"]["element_list"].split(",")
+
+
+
     info_location = {}
     for element in element_list:
         extract_vb_file = vertex_config[element]["extract_vb_file"]
         info_location[element.encode()] = extract_vb_file
     merge_info.info_location = info_location
+    merge_info.element_list = info_location.keys()
+    print(merge_info.element_list)
 
     # Decide weather to create a new one.
     DeleteOutputFolder = preset_config["General"].getboolean("DeleteOutputFolder")
