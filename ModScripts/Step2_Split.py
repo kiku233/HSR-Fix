@@ -281,16 +281,20 @@ if __name__ == "__main__":
     # set work dir.
     SplitFolder = "C:/Program Files/Star Rail/Game/output/"
 
-    # combine the output filename.
-    source_names = ["body0"]
+    # get the element list need to split.
+    preset_config = configparser.ConfigParser()
+    preset_config.read('configs/preset.ini')
+    max_element_number = str(len(preset_config["Merge"]["element_list"].split(",")) - 1).encode()
 
-    # TODO 输入时指定要分割的元素列表
+    # get the part's name which need to be split.
+    tmp_config = configparser.ConfigParser()
+    tmp_config.read('configs/tmp.ini')
+    part_names = tmp_config["Ini"]["part_names"].split(",")
 
-    for source_name in source_names:
-        print("Processing " + source_name + ".vb")
-        split_file(source_name, repair_tangent="simple", max_element_number=b"6")
-
-        # split_file(source_name, max_element_number=b"7")
+    repair_tangent = preset_config["Split"]["repair_tangent"]
+    for part_name in part_names:
+        print("Processing " + part_name + ".vb")
+        split_file(part_name, repair_tangent=repair_tangent, max_element_number=max_element_number)
 
     print("----------------------------------------------------------\r\nAll process done！")
 

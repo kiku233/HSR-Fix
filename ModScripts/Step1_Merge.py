@@ -473,12 +473,11 @@ def merge_trianglelist_files(trianglelist_indices, part_name):
     output_trianglelist_ini_file(final_output_indices, merge_info.draw_ib, part_name)
 
 
-
 def start_merge_files(merge_info= MergeInfo()):
     logging.info("Start to read pointlist and trianglelist indices.")
     pointlist_indices, trianglelist_indices = get_pointlit_and_trianglelist_indices_V2()
 
-    if use_pointlist_tech:
+    if merge_info.use_pointlist:
         if len(pointlist_indices) == 0:
             logging.error("Can't find any pointlist file,please turn pointlist tech flag to False for:")
             logging.error("['" + preset_config["Merge"]["part_name"] + "']")
@@ -489,7 +488,7 @@ def start_merge_files(merge_info= MergeInfo()):
         else:
             # I see the texcoord info stored in pointlist and trianglelist is same.
             # But GIMI designed to collect TEXCOORD info from trianglelist.
-            # I still think collect from pointlist will be neat and nice.
+            # I still think collect from pointlist will be neat and nice since they are same.
             pass
     else:
         # TODO need to fix this method,it can not work now.
@@ -542,7 +541,7 @@ if __name__ == "__main__":
     # set the output log file.
     logging.basicConfig(filename=OutputFolder + str(time.strftime('%Y-%m-%d_%H_%M_%S_')) + str(time.time_ns()) + '.log', level=logging.DEBUG)
 
-    logging.info("HSR MergeScript Current Version V0.1")
+    logging.info("MergeScript Current Version V0.1")
     logging.info("Switch to work dir: " + WorkFolder)
     logging.info(split_str)
 
@@ -555,11 +554,9 @@ if __name__ == "__main__":
 
     logging.info("Start to process hash: " + merge_info.draw_ib)
     logging.info("Current hash's part name: " + merge_info.part_name)
-
-    use_pointlist_tech = merge_info.use_pointlist
-    logging.info("Whether current object use Pointlist Topology: " + str(use_pointlist_tech))
+    logging.info("Whether current object use Pointlist Topology: " + str(merge_info.use_pointlist))
 
     start_merge_files(merge_info)
-    logging.info(split_str)
 
+    logging.info(split_str)
     logging.info("----------------------------------------------------------\r\nAll process done！")
