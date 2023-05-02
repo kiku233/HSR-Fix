@@ -166,64 +166,6 @@ def save_output_ini_body(pointlist_indices, merge_info=MergeInfo()):
     tmp_config.write(open("configs/tmp.ini","w"))
 
 
-def output_action_ini_file(pointlist_indices, input_ib_hash, part_name, match_first_index):
-    # don't care if pointlist_indices has many candidates,because we only use one of them
-    # because they are totally same,just show twice in pointlist files.
-
-    logging.info(split_str)
-    logging.info("Start to generate "+part_name+"'s ini config file.")
-
-    filenames = sorted(get_filter_filenames(WorkFolder,pointlist_indices[0] + "-vb",".txt"))
-    position_vb = filenames[0]
-    position_vb = position_vb[position_vb.find("-vb0=") + 5:position_vb.find("-vs=")]
-    logging.info("position_vb: " + str(position_vb))
-
-    # In HSR we cannot find the correct texcoord hash,so we use it in index buffer hash.
-
-    texcoord_vb = filenames[1]
-    texcoord_vb = texcoord_vb[texcoord_vb.find("-vb1=") + 5:texcoord_vb.find("-vs=")]
-    logging.info("texcoord_vb: " + str(texcoord_vb))
-
-    blend_vb = filenames[2]
-    blend_vb = blend_vb[blend_vb.find("-vb2=") + 5:blend_vb.find("-vs=")]
-    logging.info("blend_vb: " + str(blend_vb))
-
-    output_bytes = b""
-    output_bytes = output_bytes + (b"[Resource_POSITION]\r\ntype = Buffer\r\nstride = 40\r\nfilename = " + part_name.encode() + b"_POSITION.buf\r\n\r\n")
-    output_bytes = output_bytes + (b"[Resource_BLEND]\r\ntype = Buffer\r\nstride = 32\r\nfilename = " + part_name.encode() + b"_BLEND.buf\r\n\r\n")
-    output_bytes = output_bytes + (b"[Resource_TEXCOORD]\r\ntype = Buffer\r\nstride = 20\r\nfilename = " + part_name.encode() + b"_TEXCOORD.buf\r\n\r\n")
-    output_bytes = output_bytes + (b"[Resource_IB_FILE]\r\ntype = Buffer\r\nformat = DXGI_FORMAT_R16_UINT\r\nfilename = " + part_name.encode() + b".ib\r\n\r\n")
-    output_bytes = output_bytes + (b"[Resource_"+part_name.encode() + b"]\r\nfilename = "+ part_name.encode()+b".png\r\n\r\n")
-
-    output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nhandling = skip\r\nmatch_first_index = "+ match_first_index +b"\r\nib = Resource_IB_FILE\r\n;ps-t0 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
-    # output_bytes = output_bytes + (b"[TextureOverride_IB_SKIP]\r\nhash = "+input_ib_hash.encode()+b"\r\nmatch_first_index = "+ match_first_index +b"\r\nhandling = skip\r\nib = Resource_IB_FILE\r\n;ps-t0 = Resource_"+ part_name.encode()+b"\r\ndrawindexed = auto\r\n\r\n")
-
-    # In HSR,we need a vb3 to fix the outline problem.
-    # Normally we don't need a vb3,but maybe sometime it need.
-    output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\n\r\n")
-    # output_bytes = output_bytes + (b"[TextureOverride_POSITION]\r\nhash = "+position_vb.encode()+b"\r\nvb0 = Resource_POSITION\r\nvb3 = Resource_POSITION\r\n\r\n")
-
-    # TODO drawindexed cannot work perfectly! need to use draw xxx,0  xxx is calculated in GIMI's blender script.
-    #  we now can make sure that this xxx value is comes from
-    #  (the length of position file's bytes / the stride of position file)
-    #  Even with the right draw number,the texcoord still cannot draw in the texcoord hash correctly,but GIMI can do this correctly.
-    #  very strange,but now we can only use the IB to replace vb1 texcoord.
-    # output_bytes = output_bytes + (b"[TextureOverride_TEXCOORD]\r\nhash = "+texcoord_vb.encode()+b"\r\nvb1 = Resource_TEXCOORD\r\nhandling = skip\r\ndrawindexed = auto\r\n;draw = xxx,0\r\n\r\n")
-    output_bytes = output_bytes + (b";[TextureOverride_TEXCOORD]\r\n;hash = "+texcoord_vb.encode()+b"\r\n;vb1 = Resource_TEXCOORD\r\n;handling = skip\r\n;drawindexed = auto\r\n;draw = xxx,0\r\n\r\n")
-
-    output_bytes = output_bytes + (b"[TextureOverride_BLEND]\r\nhash = "+blend_vb.encode()+b"\r\nvb2 = Resource_BLEND\r\n\r\n")
-    output_bytes = output_bytes + (b";[TextureOverride_VB_SKIP_Other_1]\r\n;hash = \r\n;handling = skip\r\n\r\n")
-
-    logging.info(part_name + "  generated file content is: ")
-    logging.info(str(output_bytes))
-
-    output_file = open(preset_config["General"]["OutputFolder"] + part_name+".ini", "wb+")
-    output_file.write(output_bytes)
-    output_file.close()
-    logging.info("Generate "+part_name+"'s ini config file completed.")
-
-
-
 def output_trianglelist_ini_file(pointlist_indices, input_ib_hash, part_name):
 
     print("Start to output ini file.")
@@ -352,12 +294,6 @@ def merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info):
         logging.info("Output Step 2: Write to vb file.")
         output_vb_file(output_vb_fileinfo)
 
-        logging.info("Output Step 3: Generate ini config file: ")
-        if merge_info.type == "weapon":
-            # TODO need to test with weapon export
-            pass
-        else:
-            output_action_ini_file(pointlist_indices, merge_info.draw_ib, output_partname, ib_file_first_index_list[index])
         logging.info(split_str)
 
 

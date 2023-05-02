@@ -3,4 +3,9 @@ TODO we need a json file to store the information to config
   Merge vb0 files,generate config file,use it to import into blender,modify and export
   Split the output ib and vb file seperatelly,and write draw number in config
   Generate a final .ini file used to load back to game.
-TODO 继续测试佩拉的mod为什么他的能用我的不能用
+TODO need to test with weapon export
+    # TODO drawindexed cannot work perfectly! need to use draw xxx,0  xxx is calculated in GIMI's blender script.
+    #  we now can make sure that this xxx value is comes from
+    #  (the length of position file's bytes / the stride of position file)
+    #  Even with the right draw number,the texcoord still cannot draw in the texcoord hash correctly,but GIMI can do this correctly.
+    #  very strange,but now we can only use the IB to replace vb1 texcoord.
