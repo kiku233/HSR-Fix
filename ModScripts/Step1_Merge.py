@@ -314,6 +314,26 @@ def merge_pointlist_files(pointlist_indices, trianglelist_indices, merge_info=Me
     logging.info("Save ini information to tmp.ini")
     save_output_ini_body(pointlist_indices, merge_info)
 
+    # Save the part_names and match_first_index to tmp.ini
+    part_names = ""
+    match_first_index = ""
+    for num in range(len(ib_file_bytes)):
+        output_partname = part_name + "_part" + str(num)
+        part_names = part_names + output_partname
+
+        first_index = ib_file_first_index_list[num]
+        match_first_index = match_first_index + first_index.decode()
+
+        if num != len(ib_file_bytes) -1:
+            part_names = part_names + ","
+            match_first_index = match_first_index + ","
+
+    tmp_config = configparser.ConfigParser()
+    tmp_config.read('configs/tmp.ini')
+    tmp_config.set("Ini", "part_names", part_names)
+    tmp_config.set("Ini", "match_first_index", match_first_index)
+    tmp_config.write(open("configs/tmp.ini", "w"))
+
     logging.info("Output to file.")
     for index in range(len(ib_file_bytes)):
         output_partname = part_name + "_part" + str(index)
