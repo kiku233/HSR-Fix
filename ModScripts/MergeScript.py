@@ -518,20 +518,24 @@ if __name__ == "__main__":
     merge_info.use_pointlist = preset_config["Merge"].getboolean("use_pointlist")
     merge_info.only_pointlist = preset_config["Merge"].getboolean("only_pointlist")
 
-    # TODO 从配置文件中读取vb0 vb1等位置信息，然后组装起来放到这里，实现自动化
+    # Automatically get element list and which vb file it's extracted from by read config file.
+    vertex_config = configparser.ConfigParser()
+    if preset_config["Merge"]["type"] == "weapon":
+        vertex_config.read('configs/vertex_attr_weapon.ini')
+    else:
+        vertex_config.read('configs/vertex_attr_body.ini')
+    element_list = preset_config["Merge"]["element_list"].split(",")
+    info_location = {}
+    for element in element_list:
+        extract_vb_file = vertex_config[element]["extract_vb_file"]
+        info_location[element.encode()] = extract_vb_file
+    merge_info.info_location = info_location
 
-    # TODO 继续测试佩拉的mod为什么他的能用我的不能用
-    merge_info.info_location = {b"POSITION": "vb0", b"NORMAL": "vb0", b"TANGENT": "vb0",
-                     b"COLOR": "vb1",b"TEXCOORD": "vb1"
-        ,b"TEXCOORD1": "vb1"
-                     ,b"BLENDWEIGHTS": "vb2", b"BLENDINDICES": "vb2"
-                    }
-
-    # Make sure the OutputFolder exists.
+    # Decide weather to create a new one.
     DeleteOutputFolder = preset_config["General"].getboolean("DeleteOutputFolder")
-
     if DeleteOutputFolder:
         shutil.rmtree(OutputFolder)
+    # Make sure the OutputFolder exists.
     if not os.path.exists(OutputFolder):
         os.mkdir(OutputFolder)
 

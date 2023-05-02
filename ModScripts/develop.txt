@@ -3,3 +3,4 @@ TODO we need a json file to store the information to config
   Merge vb0 files,generate config file,use it to import into blender,modify and export
   Split the output ib and vb file seperatelly,and write draw number in config
   Generate a final .ini file used to load back to game.
+TODO 继续测试佩拉的mod为什么他的能用我的不能用
